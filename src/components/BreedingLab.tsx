@@ -136,7 +136,7 @@ export function BreedingLab() {
     const [isSimulating, setIsSimulating] = useState(false);
     const [lockedGenes, setLockedGenes] = useState<number[]>([]);
     const [activeCategory, setActiveCategory] = useState<ItemCategory | 'all'>('all');
-    const [sortBy, setSortBy] = useState<'fitness' | 'generation' | 'breedRemain'>('fitness');
+    const [sortBy, setSortBy] = useState<'fitness' | 'generation' | 'breedRemain' | 'dps' | 'element' | 'mastery' | 'rank'>('fitness');
     const [showCoiWarning, setShowCoiWarning] = useState(false);
 
     // Progressive cost via shared math utility
@@ -169,13 +169,32 @@ export function BreedingLab() {
         if (activeCategory !== 'all') {
             items = items.filter(i => (i.category ?? 'battle') === activeCategory);
         }
+        const rankOrder: Record<string, number> = { SS: 6, S: 5, A: 4, B: 3, C: 2, D: 1 };
         switch (sortBy) {
             case 'fitness': items.sort((a, b) => b.fitness - a.fitness); break;
             case 'generation': items.sort((a, b) => b.generation - a.generation); break;
             case 'breedRemain': items.sort((a, b) => (MAX_BREED_COUNT - (a.breedCount ?? 0)) - (MAX_BREED_COUNT - (b.breedCount ?? 0))); break;
+            case 'dps': items.sort((a, b) => {
+                const dA = ItemDecoder.decode(a.genome); const dB = ItemDecoder.decode(b.genome);
+                return (dB.attack / dB.attackSpeed) - (dA.attack / dA.attackSpeed);
+            }); break;
+            case 'element': items.sort((a, b) => {
+                const eOrder: Record<string, number> = { Fire: 0, Ice: 1, Lightning: 2 };
+                return (eOrder[ItemDecoder.decode(a.genome).element] ?? 0) - (eOrder[ItemDecoder.decode(b.genome).element] ?? 0);
+            }); break;
+            case 'mastery': items.sort((a, b) => (b.mastery ?? 0) - (a.mastery ?? 0)); break;
+            case 'rank': items.sort((a, b) => (rankOrder[ItemDecoder.getRating(b)] ?? 0) - (rankOrder[ItemDecoder.getRating(a)] ?? 0)); break;
         }
         return items;
     }, [inventory, activeCategory, sortBy]);
+
+    // Category counts
+    const categoryCounts = useMemo(() => ({
+        all: inventory.length,
+        battle: inventory.filter(i => (i.category ?? 'battle') === 'battle').length,
+        breeding: inventory.filter(i => i.category === 'breeding').length,
+        material: inventory.filter(i => i.category === 'material').length,
+    }), [inventory]);
 
     const handleSelect = (item: Item) => {
         // Block maxed items from being selected as parents
@@ -351,7 +370,7 @@ export function BreedingLab() {
                                     fontWeight: activeCategory === key ? 700 : 400,
                                 }}
                             >
-                                {label}
+                                {label}({categoryCounts[key]})
                             </button>
                         ))}
                     </div>
@@ -370,6 +389,10 @@ export function BreedingLab() {
                             <option value="fitness">適合度順</option>
                             <option value="generation">世代順</option>
                             <option value="breedRemain">配合残順</option>
+                            <option value="dps">DPS順</option>
+                            <option value="element">属性別</option>
+                            <option value="mastery">熟練度順</option>
+                            <option value="rank">ランク順</option>
                         </select>
                         {exhaustedCount > 0 && (
                             <button

@@ -1,5 +1,7 @@
 /**
  * DatabasePanel — Inventory list, bulk decompose, energy system, pedigree view
+ * Enhanced: 6 sort options, checkbox bulk-select (D/C/expired), lock visual emphasis,
+ *           val² gene bars, EP preview, 1-click equip, selection clear
  */
 
 import { useState, useMemo, useCallback } from 'react';
@@ -27,10 +29,12 @@ function AncestorNode({ item, label }: { item: Item | null; label: string }) {
     );
 }
 
+type SortKey = 'fitness' | 'generation' | 'rating' | 'dps' | 'element' | 'mastery';
+
 export function DatabasePanel() {
     const { inventory, geneEnergy, decompose, equipWeapon, equippedWeapon, showToast, crystallizedItems, toggleItemLock } = useGameStore();
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-    const [sortBy, setSortBy] = useState<'fitness' | 'generation' | 'rating'>('fitness');
+    const [sortBy, setSortBy] = useState<SortKey>('fitness');
     const [expandedId, setExpandedId] = useState<string | null>(null);
 
     const inventoryMap = useMemo(() => {
@@ -43,15 +47,22 @@ export function DatabasePanel() {
 
     const sortedInventory = useMemo(() => {
         const sorted = [...inventory];
+        const rankOrder: Record<string, number> = { SS: 6, S: 5, A: 4, B: 3, C: 2, D: 1 };
         switch (sortBy) {
             case 'fitness': return sorted.sort((a, b) => b.fitness - a.fitness);
             case 'generation': return sorted.sort((a, b) => b.generation - a.generation);
-            case 'rating': {
-                const ratingOrder: Record<string, number> = { S: 5, A: 4, B: 3, C: 2, D: 1 };
-                return sorted.sort((a, b) =>
-                    (ratingOrder[ItemDecoder.getRating(b)] || 0) - (ratingOrder[ItemDecoder.getRating(a)] || 0)
-                );
-            }
+            case 'rating': return sorted.sort((a, b) =>
+                (rankOrder[ItemDecoder.getRating(b)] || 0) - (rankOrder[ItemDecoder.getRating(a)] || 0)
+            );
+            case 'dps': return sorted.sort((a, b) => {
+                const dA = ItemDecoder.decode(a.genome); const dB = ItemDecoder.decode(b.genome);
+                return (dB.attack / dB.attackSpeed) - (dA.attack / dA.attackSpeed);
+            });
+            case 'element': return sorted.sort((a, b) => {
+                const eOrder: Record<string, number> = { Fire: 0, Ice: 1, Lightning: 2 };
+                return (eOrder[ItemDecoder.decode(a.genome).element] ?? 0) - (eOrder[ItemDecoder.decode(b.genome).element] ?? 0);
+            });
+            case 'mastery': return sorted.sort((a, b) => (b.mastery ?? 0) - (a.mastery ?? 0));
         }
     }, [inventory, sortBy]);
 
@@ -64,13 +75,21 @@ export function DatabasePanel() {
         setSelectedIds(next);
     };
 
-    const selectAllLowRating = () => {
+    // Bulk select helpers
+    const selectByFilter = (filter: (item: Item) => boolean) => {
         const equippedId = equippedWeapon?.id;
-        const lowIds = inventory
-            .filter(i => ['C', 'D'].includes(ItemDecoder.getRating(i)) && i.id !== equippedId && !i.locked)
+        const ids = inventory
+            .filter(i => filter(i) && i.id !== equippedId && !i.locked)
             .map(i => i.id);
-        setSelectedIds(new Set(lowIds));
+        setSelectedIds(new Set(ids));
     };
+
+    const selectDOnly = () => selectByFilter(i => ItemDecoder.getRating(i) === 'D');
+    const selectCOnly = () => selectByFilter(i => ItemDecoder.getRating(i) === 'C');
+    const selectExpired = () => selectByFilter(i => (i.breedCount ?? 0) >= MAX_BREED_COUNT);
+
+    // Compute EP yield for selected items
+    const selectedEP = selectedIds.size * 10;
 
     const handleDecompose = () => {
         if (selectedIds.size === 0) return;
@@ -88,7 +107,7 @@ export function DatabasePanel() {
                     <div className="db-energy">⚡ {geneEnergy} EP</div>
                     <select
                         value={sortBy}
-                        onChange={e => setSortBy(e.target.value as typeof sortBy)}
+                        onChange={e => setSortBy(e.target.value as SortKey)}
                         style={{
                             background: 'var(--bg-panel)',
                             border: '1px solid var(--border)',
@@ -102,19 +121,60 @@ export function DatabasePanel() {
                         <option value="fitness">適合度順</option>
                         <option value="generation">世代順</option>
                         <option value="rating">ランク順</option>
+                        <option value="dps">DPS順</option>
+                        <option value="element">属性別</option>
+                        <option value="mastery">熟練度順</option>
                     </select>
-                    <button className="btn btn-secondary" style={{ padding: '4px 12px', fontSize: 10 }} onClick={selectAllLowRating}>
-                        C/D選択
-                    </button>
-                    <button
-                        className="btn btn-danger"
-                        style={{ padding: '4px 12px', fontSize: 10 }}
-                        onClick={handleDecompose}
-                        disabled={selectedIds.size === 0}
-                    >
-                        🔥 解体 ({selectedIds.size})
-                    </button>
                 </div>
+            </div>
+
+            {/* ========== Bulk Selection Checkboxes ========== */}
+            <div style={{
+                display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center',
+                padding: '8px 12px', marginBottom: 8,
+                background: 'rgba(255,255,255,0.02)', borderRadius: 'var(--radius-sm)',
+                border: '1px solid rgba(255,255,255,0.05)',
+            }}>
+                <span style={{ fontSize: 10, color: 'var(--text-dim)', marginRight: 4 }}>一括選択:</span>
+                <button
+                    className="btn btn-secondary"
+                    style={{ padding: '3px 10px', fontSize: 10 }}
+                    onClick={selectDOnly}
+                >
+                    D のみ
+                </button>
+                <button
+                    className="btn btn-secondary"
+                    style={{ padding: '3px 10px', fontSize: 10 }}
+                    onClick={selectCOnly}
+                >
+                    C のみ
+                </button>
+                <button
+                    className="btn btn-secondary"
+                    style={{ padding: '3px 10px', fontSize: 10 }}
+                    onClick={selectExpired}
+                >
+                    寿命切れ
+                </button>
+                {selectedIds.size > 0 && (
+                    <>
+                        <button
+                            className="btn btn-secondary"
+                            style={{ padding: '3px 10px', fontSize: 10, marginLeft: 'auto' }}
+                            onClick={() => setSelectedIds(new Set())}
+                        >
+                            ✕ 選択解除
+                        </button>
+                        <button
+                            className="btn btn-danger"
+                            style={{ padding: '3px 12px', fontSize: 10, fontWeight: 700 }}
+                            onClick={handleDecompose}
+                        >
+                            🔥 解体 ({selectedIds.size}体 → +{selectedEP}EP)
+                        </button>
+                    </>
+                )}
             </div>
 
             <div className="db-list">
@@ -132,22 +192,29 @@ export function DatabasePanel() {
                         const isExpanded = expandedId === item.id;
                         const isEquipped = equippedWeapon?.id === item.id;
                         const mastery = item.mastery ?? 0;
+                        const isLocked = item.locked;
+                        const isExpiredBreed = (item.breedCount ?? 0) >= MAX_BREED_COUNT;
 
                         return (
                             <div key={item.id}>
                                 <div
                                     className={`db-item ${isSelected ? 'selected' : ''} ${isEquipped ? 'db-item-equipped' : ''}`}
                                     onClick={() => setExpandedId(isExpanded ? null : item.id)}
+                                    style={isLocked ? {
+                                        borderLeft: '3px solid var(--accent-yellow, #ffd700)',
+                                        background: 'rgba(255, 215, 0, 0.03)',
+                                    } : undefined}
                                 >
                                     <div
                                         className="db-item-check"
                                         onClick={e => { e.stopPropagation(); toggleSelection(item.id); }}
-                                        style={isEquipped || item.locked ? { opacity: 0.3, cursor: 'not-allowed' } : undefined}
+                                        style={isEquipped || isLocked ? { opacity: 0.3, cursor: 'not-allowed' } : undefined}
                                     >
-                                        {isSelected ? '✓' : isEquipped ? '⚔' : item.locked ? '🔒' : ''}
+                                        {isSelected ? '✓' : isEquipped ? '⚔' : isLocked ? '🔒' : ''}
                                     </div>
-                                    <div>
+                                    <div style={{ flex: 1 }}>
                                         <div className="db-item-name">
+                                            {isLocked && <span style={{ color: 'var(--accent-yellow, #ffd700)', fontSize: 11, marginRight: 4 }}>🔒</span>}
                                             {isEquipped && <span style={{ color: 'var(--accent-cyan)', fontSize: 9, marginRight: 4 }}>[装備中]</span>}
                                             {item.bloodlineName ?? `${ItemDecoder.getElementLabel(stats.element)} 個体`}
                                         </div>
@@ -159,8 +226,9 @@ export function DatabasePanel() {
                                                     {GENETIC_DISEASE_LABELS[item.geneticDisease].icon}
                                                 </span>
                                             )}
-                                            <span style={{ color: 'var(--text-dim)', marginLeft: 6, fontSize: 9 }}>
+                                            <span style={{ color: isExpiredBreed ? 'var(--accent-red)' : 'var(--text-dim)', marginLeft: 6, fontSize: 9 }}>
                                                 配合{item.breedCount ?? 0}/{MAX_BREED_COUNT}
+                                                {isExpiredBreed && ' ⏰'}
                                             </span>
                                         </div>
                                     </div>
@@ -171,6 +239,20 @@ export function DatabasePanel() {
                                         DPS {(stats.attack / stats.attackSpeed).toFixed(0)}
                                     </div>
                                     <div className={`db-item-rating ${rating}`}>{rating}</div>
+                                    {/* 1-click equip shortcut */}
+                                    {!isEquipped && (
+                                        <button
+                                            onClick={e => { e.stopPropagation(); equipWeapon(item); showToast(`⚔️ ${item.bloodlineName ?? 'ゲノム'}を装備`); }}
+                                            style={{
+                                                padding: '2px 8px', fontSize: 9, marginLeft: 6,
+                                                background: 'rgba(0,210,255,0.1)', border: '1px solid rgba(0,210,255,0.3)',
+                                                borderRadius: 4, color: 'var(--accent-cyan)', cursor: 'pointer',
+                                                whiteSpace: 'nowrap',
+                                            }}
+                                        >
+                                            装備
+                                        </button>
+                                    )}
                                 </div>
 
                                 {/* Expanded detail + Pedigree */}
@@ -181,18 +263,26 @@ export function DatabasePanel() {
                                         borderBottom: '1px solid var(--border)',
                                         marginBottom: 4,
                                     }}>
+                                        {/* Gene bars with val² display + rank markers */}
                                         <div className="gene-bars" style={{ marginBottom: 8 }}>
-                                            {item.genome.map((val, i) => (
-                                                <div key={i} className="gene-bar-row">
-                                                    <span className="gene-bar-label">{GENE_NAMES[i]}</span>
-                                                    <div className="gene-bar-track">
-                                                        <div
-                                                            className={`gene-bar-fill ${i >= 8 ? (i === 8 ? 'fire' : 'ice') : i >= 5 ? 'personality' : ''}`}
-                                                            style={{ width: `${val * 100}%` }}
-                                                        />
+                                            {item.genome.map((val, i) => {
+                                                const displayWidth = i >= 8
+                                                    ? Math.max(val * val * 100, val > 0.01 ? 5 : 0)
+                                                    : val * val * 100;
+                                                return (
+                                                    <div key={i} className="gene-bar-row">
+                                                        <span className="gene-bar-label">{GENE_NAMES[i]}</span>
+                                                        <div className="gene-bar-track" style={{ position: 'relative' }}>
+                                                            <div style={{ position: 'absolute', left: '36%', top: 0, bottom: 0, width: 1, background: 'rgba(255,255,255,0.08)' }} title="A" />
+                                                            <div style={{ position: 'absolute', left: '64%', top: 0, bottom: 0, width: 1, background: 'rgba(255,255,255,0.12)' }} title="S" />
+                                                            <div
+                                                                className={`gene-bar-fill ${i >= 8 ? (i === 8 ? 'fire' : 'ice') : i >= 5 ? 'personality' : ''}`}
+                                                                style={{ width: `${displayWidth}%` }}
+                                                            />
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            ))}
+                                                );
+                                            })}
                                         </div>
 
                                         {/* Pedigree Tree */}
@@ -258,17 +348,17 @@ export function DatabasePanel() {
                                                 {isEquipped ? '装備済み' : '装備'}
                                             </button>
                                             <button
-                                                className={`btn ${item.locked ? 'btn-primary' : 'btn-secondary'}`}
+                                                className={`btn ${isLocked ? 'btn-primary' : 'btn-secondary'}`}
                                                 style={{ padding: '6px 12px', fontSize: 10 }}
                                                 onClick={() => toggleItemLock(item.id)}
                                             >
-                                                {item.locked ? '🔒 解除' : '🔓 ロック'}
+                                                {isLocked ? '🔒 解除' : '🔓 ロック'}
                                             </button>
                                             <button
                                                 className="btn btn-danger"
                                                 style={{ padding: '6px 12px', fontSize: 10 }}
                                                 onClick={() => { decompose([item.id]); setExpandedId(null); }}
-                                                disabled={isEquipped || item.locked}
+                                                disabled={isEquipped || isLocked}
                                             >
                                                 解体
                                             </button>
