@@ -316,7 +316,9 @@ export function BreedingLab() {
     const handleEquipAndResume = (item: Item) => {
         equipWeapon(item);
         if (isBreedingPhase) {
-            advanceStage();
+            if (stageSummary?.cleared) {
+                advanceStage();
+            }
             exitBreedingPhase();
             setStageSummary(null);
         }

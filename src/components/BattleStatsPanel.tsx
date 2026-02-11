@@ -24,7 +24,7 @@ const SPECIES_LABELS: Record<EnemySpecies, string> = {
 
 export function BattleStatsPanel() {
     const store = useGameStore();
-    const { stage, wave, maxWaves, equippedWeapon, currentResult, isBreedingPhase, maxClearedStage } = store;
+    const { stage, wave, maxWaves, equippedWeapon, currentResult, isBreedingPhase, maxClearedStage, stageSummary } = store;
     const [weaponHp, setWeaponHp] = useState(100);
     const [weaponMaxHp, setWeaponMaxHp] = useState(100);
     const [enemyHp, setEnemyHp] = useState(100);
@@ -238,6 +238,7 @@ export function BattleStatsPanel() {
                             totalKills: stageTotalKills,
                             genesCollected: totalGenesCollected,
                             bestFitness: totalBestFitness,
+                            cleared: false,
                         });
                         store.enterBreedingPhase();
                         store.endBattle();
@@ -286,6 +287,7 @@ export function BattleStatsPanel() {
                     totalKills: stageTotalKills,
                     genesCollected: totalGenesCollected,
                     bestFitness: totalBestFitness,
+                    cleared: false,
                 });
                 store.enterBreedingPhase();
             } else if (abortRef.current) {
@@ -312,6 +314,7 @@ export function BattleStatsPanel() {
                     totalKills: stageTotalKills,
                     genesCollected: totalGenesCollected,
                     bestFitness: totalBestFitness,
+                    cleared: true,
                 });
 
                 // Predict next stage survival
@@ -599,24 +602,36 @@ export function BattleStatsPanel() {
             <div className="battle-controls">
                 {isBreedingPhase ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        <div className="breeding-banner">✨ ステージ {stage} クリア！</div>
-                        {equippedWeapon && (
-                            <button
-                                className="btn btn-primary"
-                                style={{ width: '100%' }}
-                                onClick={() => {
-                                    store.advanceStage();
-                                    store.exitBreedingPhase();
-                                    store.setStageSummary(null);
-                                }}
-                            >
-                                ⚔️ 次のステージへ（現在の装備で出撃）
-                            </button>
+                        {stageSummary?.cleared ? (
+                            <>
+                                <div className="breeding-banner">✨ ステージ {stage} クリア！</div>
+                                {equippedWeapon && (
+                                    <button
+                                        className="btn btn-primary"
+                                        style={{ width: '100%' }}
+                                        onClick={() => {
+                                            store.advanceStage();
+                                            store.exitBreedingPhase();
+                                            store.setStageSummary(null);
+                                        }}
+                                    >
+                                        ⚔️ 次のステージへ（現在の装備で出撃）
+                                    </button>
+                                )}
+                            </>
+                        ) : (
+                            <div className="breeding-banner" style={{ background: 'rgba(255,50,50,0.15)', borderColor: 'var(--accent-red)' }}>
+                                💀 ステージ {stage} 失敗… 配合で強化して再挑戦！
+                            </div>
                         )}
                         <button
                             className="btn btn-secondary"
                             style={{ width: '100%' }}
-                            onClick={() => store.setActiveTab('lab')}
+                            onClick={() => {
+                                store.exitBreedingPhase();
+                                store.setStageSummary(null);
+                                store.setActiveTab('lab');
+                            }}
                         >
                             🧬 ラボで配合してから出撃
                         </button>

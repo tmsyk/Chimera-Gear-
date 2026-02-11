@@ -21,6 +21,7 @@ export interface StageSummary {
     totalKills: number;
     genesCollected: number;
     bestFitness: number;
+    cleared: boolean;
 }
 
 export interface GameStoreState {
@@ -275,7 +276,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
         const s = get();
         SaveManager.saveGame(s).catch(() => { });
     },
-    exitBreedingPhase: () => set({ isBreedingPhase: false, activeTab: 'battle' }),
+    exitBreedingPhase: () => set({ isBreedingPhase: false, activeTab: 'battle', wave: 1 }),
     recordDps: (dps) => set((s) => {
         const history = [...s.dpsHistory, dps].slice(-10); // Keep last 10
         return {
