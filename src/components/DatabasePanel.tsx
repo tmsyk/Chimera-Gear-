@@ -358,19 +358,11 @@ export function DatabasePanel() {
 
                                         <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
                                             <button
-                                                className={`btn ${isEquipped ? 'btn-secondary' : 'btn-primary'}`}
-                                                style={{ flex: 1, padding: '6px', fontSize: 10 }}
-                                                onClick={() => equipWeapon(item)}
-                                                disabled={isEquipped}
-                                            >
-                                                {isEquipped ? '装備済み' : '装備'}
-                                            </button>
-                                            <button
                                                 className={`btn ${isLocked ? 'btn-primary' : 'btn-secondary'}`}
-                                                style={{ padding: '6px 12px', fontSize: 10 }}
+                                                style={{ flex: 1, padding: '6px 12px', fontSize: 10 }}
                                                 onClick={() => toggleItemLock(item.id)}
                                             >
-                                                {isLocked ? '🔒 解除' : '🔓 ロック'}
+                                                {isLocked ? '🔒 ロック解除' : '🔓 ロック'}
                                             </button>
                                             <button
                                                 className="btn btn-danger"

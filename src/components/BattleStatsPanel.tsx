@@ -60,6 +60,7 @@ export function BattleStatsPanel() {
         let totalGenesCollected = 0;
         let totalBestFitness = 0;
         let stageTotalKills = 0;
+        let weaponDestroyed = false;
 
         try {
 
@@ -72,7 +73,10 @@ export function BattleStatsPanel() {
                     if (useGameStore.getState().isBreedingPhase) break;
                     if (abortRef.current) break;
                     // HP0 guard: prevent zombie state
-                    if (weaponCarryHpRef.current !== null && weaponCarryHpRef.current <= 0) break;
+                    if (weaponCarryHpRef.current !== null && weaponCarryHpRef.current <= 0) {
+                        weaponDestroyed = true;
+                        break;
+                    }
 
                     const isBossStage = currentStage % 10 === 0 && currentStage > 0;
                     const { genome: enemyGenome, species } = isBossStage && i === enemiesInWave - 1
@@ -182,15 +186,19 @@ export function BattleStatsPanel() {
                         // Update mastery for equipped weapon
                         store.updateMastery(equippedWeapon.id, fit);
 
-                        const lootItem = {
-                            id: `loot_${Date.now()}_${Math.random().toString(36).slice(2, 5)}_${i}`,
-                            genome: enemyGenome,
-                            fitness: fit,
-                            generation: 1,
-                        };
-                        store.addItem(lootItem);
-                        totalGenesCollected++;
-                        if (fit > totalBestFitness) totalBestFitness = fit;
+                        // Loot drop: 40% normal, 80% boss
+                        const lootChance = species === 'boss' ? 0.80 : 0.40;
+                        if (Math.random() < lootChance) {
+                            const lootItem = {
+                                id: `loot_${Date.now()}_${Math.random().toString(36).slice(2, 5)}_${i}`,
+                                genome: enemyGenome,
+                                fitness: fit,
+                                generation: 1,
+                            };
+                            store.addItem(lootItem);
+                            totalGenesCollected++;
+                            if (fit > totalBestFitness) totalBestFitness = fit;
+                        }
 
                         // Material shard drop: 80% for boss, 15% normally
                         const isBossKill = species === 'boss';
@@ -222,6 +230,7 @@ export function BattleStatsPanel() {
                         });
                         store.setBattleResult(result);
                         weaponCarryHpRef.current = 0;
+                        weaponDestroyed = true;
 
                         // Enter breeding phase for recovery
                         store.setStageSummary({
@@ -240,6 +249,9 @@ export function BattleStatsPanel() {
                     // No-heal: carry remaining HP to next fight
                     weaponCarryHpRef.current = result.weaponHpRemaining;
                 }
+
+                // If weapon was destroyed, don't report wave clear
+                if (weaponDestroyed) break;
 
                 // Wave complete
                 if (currentWave < currentMaxWaves) {
@@ -263,7 +275,20 @@ export function BattleStatsPanel() {
                 if (abortRef.current) break;
             }
 
-            if (abortRef.current) {
+            if (weaponDestroyed) {
+                // Weapon destroyed mid-stage — do NOT advance stage
+                store.addBattleLog({
+                    time: 0, actor: 'weapon', action: 'defend',
+                    message: `💀 ステージ ${currentStage} 失敗… 戦果: ${stageTotalKills}キル`,
+                });
+                store.setStageSummary({
+                    stage: currentStage,
+                    totalKills: stageTotalKills,
+                    genesCollected: totalGenesCollected,
+                    bestFitness: totalBestFitness,
+                });
+                store.enterBreedingPhase();
+            } else if (abortRef.current) {
                 // Aborted — just clean up
                 store.addBattleLog({
                     time: 0, actor: 'weapon', action: 'defend',
