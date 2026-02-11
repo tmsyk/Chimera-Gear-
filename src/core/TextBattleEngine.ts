@@ -192,9 +192,19 @@ export class TextBattleEngine {
 
             // Track resisted damage for adaptation score
             totalAttempedDamage += totalDamageDealt;
+
+            // Immediate HP0 check: if weapon died mid-tick, stop NOW
+            if (weapon.currentHp <= 0) {
+                weapon.currentHp = 0;
+                logs.push({
+                    time, actor: 'weapon', action: 'defend',
+                    message: `💀 キメラ兵器は破壊された…`,
+                });
+                break;
+            }
         }
 
-        const won = enemy.currentHp <= 0;
+        const won = enemy.currentHp <= 0 && weapon.currentHp > 0;
         const killTime = won ? time : Infinity;
         const damageRatio = totalDamageTaken > 0 ? totalDamageDealt / totalDamageTaken : totalDamageDealt > 0 ? 999 : 1;
 

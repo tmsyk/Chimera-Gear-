@@ -263,7 +263,7 @@ export function DatabasePanel() {
                                         borderBottom: '1px solid var(--border)',
                                         marginBottom: 4,
                                     }}>
-                                        {/* Gene bars with val² display + rank markers */}
+                                        {/* Gene bars with val² display + rank markers + derived lightning resist */}
                                         <div className="gene-bars" style={{ marginBottom: 8 }}>
                                             {item.genome.map((val, i) => {
                                                 const displayWidth = i >= 8
@@ -283,6 +283,24 @@ export function DatabasePanel() {
                                                     </div>
                                                 );
                                             })}
+                                            {/* Lightning resistance — derived value, not in genome */}
+                                            {(() => {
+                                                const lrVal = stats.lightningResist;
+                                                const lrWidth = Math.max(lrVal * lrVal * 100, lrVal > 0.01 ? 5 : 0);
+                                                return (
+                                                    <div className="gene-bar-row">
+                                                        <span className="gene-bar-label">⚡雷耐性</span>
+                                                        <div className="gene-bar-track" style={{ position: 'relative' }}>
+                                                            <div style={{ position: 'absolute', left: '36%', top: 0, bottom: 0, width: 1, background: 'rgba(255,255,255,0.08)' }} title="A" />
+                                                            <div style={{ position: 'absolute', left: '64%', top: 0, bottom: 0, width: 1, background: 'rgba(255,255,255,0.12)' }} title="S" />
+                                                            <div
+                                                                className="gene-bar-fill"
+                                                                style={{ width: `${lrWidth}%`, background: 'var(--accent-yellow, #ffd700)' }}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })()}
                                         </div>
 
                                         {/* Pedigree Tree */}
