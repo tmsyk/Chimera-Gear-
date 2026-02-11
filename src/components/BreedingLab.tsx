@@ -12,7 +12,7 @@ import { PedigreeSystem, GENETIC_DISEASE_LABELS, MAX_BREED_COUNT } from '../core
 import type { Item } from '../core/GeneticEngine';
 import type { SimulationResult } from '../core/FastSimulator';
 import { getTraitSummary } from '../core/TraitSystem';
-import { calculateBreedingCost } from '../core/mathUtils';
+import { calculateBreedingCost, requiredMastery } from '../core/mathUtils';
 
 function GeneCard({ item, selected, onClick, isEquipped, onCrystallize }: {
     item: Item; selected: boolean; onClick: () => void; isEquipped?: boolean;
@@ -56,17 +56,26 @@ function GeneCard({ item, selected, onClick, isEquipped, onCrystallize }: {
                 )}
             </div>
             <div className="gene-bars">
-                {item.genome.map((val, i) => (
-                    <div key={i} className="gene-bar-row">
-                        <span className="gene-bar-label">{GENE_NAMES[i]}</span>
-                        <div className="gene-bar-track">
-                            <div
-                                className={`gene-bar-fill ${i >= 8 ? (i === 8 ? 'fire' : 'ice') : i >= 5 ? 'personality' : ''}`}
-                                style={{ width: `${val * 100}%` }}
-                            />
+                {item.genome.map((val, i) => {
+                    // Squared display: C/D ~9-25%, S/SS ~64-90%
+                    const displayWidth = i >= 8
+                        ? Math.max(val * val * 100, val > 0.01 ? 5 : 0) // Resistance: min 5% if non-zero
+                        : val * val * 100;
+                    return (
+                        <div key={i} className="gene-bar-row">
+                            <span className="gene-bar-label">{GENE_NAMES[i]}</span>
+                            <div className="gene-bar-track" style={{ position: 'relative' }}>
+                                {/* Rank markers */}
+                                <div style={{ position: 'absolute', left: '36%', top: 0, bottom: 0, width: 1, background: 'rgba(255,255,255,0.08)' }} title="A" />
+                                <div style={{ position: 'absolute', left: '64%', top: 0, bottom: 0, width: 1, background: 'rgba(255,255,255,0.12)' }} title="S" />
+                                <div
+                                    className={`gene-bar-fill ${i >= 8 ? (i === 8 ? 'fire' : 'ice') : i >= 5 ? 'personality' : ''}`}
+                                    style={{ width: `${displayWidth}%` }}
+                                />
+                            </div>
                         </div>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
             <div className="gene-card-meta">
                 <span>Gen.{item.generation}</span>
@@ -96,20 +105,24 @@ function GeneCard({ item, selected, onClick, isEquipped, onCrystallize }: {
                     ))}
                 </div>
             )}
-            {/* Crystallize button for maxed items */}
-            {atLimit && onCrystallize && (
-                <button
-                    onClick={(e) => { e.stopPropagation(); onCrystallize(item); }}
-                    style={{
-                        marginTop: 6, padding: '4px 10px', fontSize: 10, width: '100%',
-                        background: 'linear-gradient(135deg, rgba(170, 85, 255, 0.2), rgba(255, 107, 53, 0.2))',
-                        border: '1px solid var(--accent-magenta)', borderRadius: 4,
-                        color: 'var(--accent-magenta)', cursor: 'pointer', fontWeight: 700,
-                    }}
-                >
-                    💎 結晶化 (+EP)
-                </button>
-            )}
+            {/* Crystallize button for maxed items — show estimated EP yield */}
+            {atLimit && onCrystallize && (() => {
+                const genomeQuality = item.genome.reduce((a, b) => a + b, 0) / 10;
+                const estEP = Math.floor(50 + item.generation * 10 + genomeQuality * 40 + mastery * 0.5 + breedCount * 15);
+                return (
+                    <button
+                        onClick={(e) => { e.stopPropagation(); onCrystallize(item); }}
+                        style={{
+                            marginTop: 6, padding: '4px 10px', fontSize: 10, width: '100%',
+                            background: 'linear-gradient(135deg, rgba(170, 85, 255, 0.2), rgba(255, 107, 53, 0.2))',
+                            border: '1px solid var(--accent-magenta)', borderRadius: 4,
+                            color: 'var(--accent-magenta)', cursor: 'pointer', fontWeight: 700,
+                        }}
+                    >
+                        💎 結晶化 (+{estEP}EP)
+                    </button>
+                );
+            })()}
         </div>
     );
 }
@@ -165,10 +178,15 @@ export function BreedingLab() {
     }, [inventory, activeCategory, sortBy]);
 
     const handleSelect = (item: Item) => {
-        // Equipped items can now be used for breeding
         // Block maxed items from being selected as parents
         if ((item.breedCount ?? 0) >= MAX_BREED_COUNT) {
             showToast(`⚠️ この個体は配合上限(${MAX_BREED_COUNT}回)に達しています。結晶化してください`);
+            return;
+        }
+        // Mastery gate: must earn battle experience before breeding
+        const reqMastery = requiredMastery(item.generation);
+        if ((item.mastery ?? 0) < reqMastery) {
+            showToast(`⚠️ 熟練度不足！配合には🔮${reqMastery}以上必要（現在: ${item.mastery ?? 0}）— まず戦闘で鍛えてください`);
             return;
         }
 
@@ -425,9 +443,14 @@ export function BreedingLab() {
                             <span className="stat-value" style={{ color: geneEnergy >= totalCost ? 'var(--accent-green)' : 'var(--accent-red)' }}>
                                 ⚡{totalCost} EP
                                 {lockedGenes.length > 0 && <span style={{ fontSize: 9, opacity: 0.7 }}> (配合{breedCost} + ロック{lockedGenes.length}×{LOCK_COST_PER_GENE})</span>}
-                                {geneEnergy < totalCost && ' (不足)'}
                             </span>
                         </div>
+                        {/* EP deficit display */}
+                        {geneEnergy < totalCost && (
+                            <div style={{ fontSize: 10, color: 'var(--accent-red)', marginTop: 2, padding: '3px 8px', background: 'rgba(255,51,85,0.08)', borderRadius: 4 }}>
+                                🚨 {totalCost - geneEnergy}EP 不足（所持: ⚡{geneEnergy} / 必要: ⚡{totalCost}）
+                            </div>
+                        )}
                     </div>
 
                     {/* Gene Lock (Epigenetics) */}

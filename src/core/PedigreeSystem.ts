@@ -353,13 +353,22 @@ export class PedigreeSystem {
         // Calculate crystal bonus based on generation and genome quality
         const genomeSum = item.genome.reduce((a, b) => a + b, 0);
         const qualityFactor = genomeSum / GENOME_LENGTH; // avg gene value 0~1
+        const mastery = item.mastery ?? 0;
+        const breedCount = item.breedCount ?? 0;
 
-        // Energy yield: base 50 + generation bonus + quality bonus
-        const energyYield = Math.floor(50 + item.generation * 10 + qualityFactor * 40);
+        // Energy yield: base 50 + generation + quality + mastery + usage bonuses
+        const masteryBonus = mastery * 0.5;         // mastery 100 → +50 EP
+        const usageBonus = breedCount * 15;          // 3 breeds → +45 EP
+        const energyYield = Math.floor(
+            50 + item.generation * 10 + qualityFactor * 40 + masteryBonus + usageBonus
+        );
 
-        // Stat legacy: small bonus (5~15% of parent's strongest genes)
+        // Stat legacy: bonus genes passed to descendants
+        // High mastery (>=50) lowers the threshold from 0.6 to 0.4
+        const legacyThreshold = mastery >= 50 ? 0.4 : 0.6;
+        const legacyMultiplier = mastery >= 80 ? 0.15 : 0.1;
         const statLegacy = item.genome.map(g =>
-            g > 0.6 ? g * 0.1 : 0  // Only genes above 0.6 contribute
+            g > legacyThreshold ? g * legacyMultiplier : 0
         );
 
         const bloodlineName = item.bloodlineName ?? this.generateBloodlineName(item);

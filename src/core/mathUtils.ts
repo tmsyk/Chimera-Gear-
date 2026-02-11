@@ -68,20 +68,28 @@ const RANK_COST_MAP: Record<string, number> = {
 
 /**
  * Calculate breeding EP cost.
- * Formula: round(baseCost × generation² × rankMultiplier) + lockedGenes × lockCostPerGene
+ * Formula: round(baseCost × generation^2.5 × rankMultiplier) + lockedGenes × lockCostPerGene
  */
 export function calculateBreedingCost(
     generation: number,
     bestRank: string,
     lockedGeneCount: number,
-    baseCost: number = 10,
+    baseCost: number = 25,
     lockCostPerGene: number = 10,
 ): { breedCost: number; totalCost: number } {
-    const genCost = generation * generation;
+    const genCost = Math.pow(generation, 2.5);
     const rankMult = RANK_COST_MAP[bestRank] ?? 1;
     const breedCost = Math.round(baseCost * genCost * rankMult);
     const totalCost = breedCost + lockedGeneCount * lockCostPerGene;
     return { breedCost, totalCost };
+}
+
+/**
+ * Minimum mastery required to use an item as a breeding parent.
+ * Scales with generation: 15 + gen * 5 (Gen1=20, Gen5=40, Gen10=65)
+ */
+export function requiredMastery(generation: number): number {
+    return 15 + generation * 5;
 }
 
 // ========== DIMINISHING RETURNS ==========

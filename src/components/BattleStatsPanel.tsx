@@ -71,6 +71,8 @@ export function BattleStatsPanel() {
                 for (let i = 0; i < enemiesInWave; i++) {
                     if (useGameStore.getState().isBreedingPhase) break;
                     if (abortRef.current) break;
+                    // HP0 guard: prevent zombie state
+                    if (weaponCarryHpRef.current !== null && weaponCarryHpRef.current <= 0) break;
 
                     const isBossStage = currentStage % 10 === 0 && currentStage > 0;
                     const { genome: enemyGenome, species } = isBossStage && i === enemiesInWave - 1
@@ -431,7 +433,7 @@ export function BattleStatsPanel() {
                                 <div key={r.label} className="resist-bar-row">
                                     <span className="resist-bar-label">{r.label}</span>
                                     <div className="resist-bar-track">
-                                        <div className="resist-bar-fill" style={{ width: `${r.value * 100}%`, background: r.color }} />
+                                        <div className="resist-bar-fill" style={{ width: `${Math.max(r.value * 100, r.value > 0.01 ? 5 : 0)}%`, background: r.color }} />
                                     </div>
                                     <span className="resist-bar-value" style={{ color: r.color }}>{(r.value * 100).toFixed(0)}%</span>
                                 </div>
