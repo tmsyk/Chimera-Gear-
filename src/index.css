@@ -958,7 +958,7 @@ body {
 
 .db-item {
   display: grid;
-  grid-template-columns: 32px 1fr 60px 80px 50px;
+  grid-template-columns: 32px 1fr 60px 80px 50px 48px;
   align-items: center;
   gap: 12px;
   padding: 10px 12px;

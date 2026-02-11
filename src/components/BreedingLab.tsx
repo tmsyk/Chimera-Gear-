@@ -14,9 +14,10 @@ import type { SimulationResult } from '../core/FastSimulator';
 import { getTraitSummary } from '../core/TraitSystem';
 import { calculateBreedingCost, requiredMastery } from '../core/mathUtils';
 
-function GeneCard({ item, selected, onClick, isEquipped, onCrystallize }: {
+function GeneCard({ item, selected, onClick, isEquipped, onCrystallize, onEquip }: {
     item: Item; selected: boolean; onClick: () => void; isEquipped?: boolean;
     onCrystallize?: (item: Item) => void;
+    onEquip?: (item: Item) => void;
 }) {
     const stats = ItemDecoder.decode(item.genome);
     const rating = ItemDecoder.getRating(item);
@@ -104,6 +105,19 @@ function GeneCard({ item, selected, onClick, isEquipped, onCrystallize }: {
                         </span>
                     ))}
                 </div>
+            )}
+            {/* Equip button */}
+            {!isEquipped && onEquip && (
+                <button
+                    onClick={(e) => { e.stopPropagation(); onEquip(item); }}
+                    style={{
+                        marginTop: 6, padding: '4px 10px', fontSize: 10, width: '100%',
+                        background: 'rgba(0,210,255,0.08)', border: '1px solid rgba(0,210,255,0.3)',
+                        borderRadius: 4, color: 'var(--accent-cyan)', cursor: 'pointer', fontWeight: 600,
+                    }}
+                >
+                    ⚔️ 装備する
+                </button>
             )}
             {/* Crystallize button for maxed items — show estimated EP yield */}
             {atLimit && onCrystallize && (() => {
@@ -432,6 +446,7 @@ export function BreedingLab() {
                                     onClick={() => handleSelect(item)}
                                     isEquipped={isEquipped}
                                     onCrystallize={handleCrystallize}
+                                    onEquip={(it) => { equipWeapon(it); showToast(`⚔️ ${it.bloodlineName ?? 'ゲノム'}を装備`); }}
                                 />
                             );
                         })

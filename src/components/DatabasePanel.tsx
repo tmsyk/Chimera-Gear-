@@ -240,19 +240,19 @@ export function DatabasePanel() {
                                     </div>
                                     <div className={`db-item-rating ${rating}`}>{rating}</div>
                                     {/* 1-click equip shortcut */}
-                                    {!isEquipped && (
+                                    {!isEquipped ? (
                                         <button
                                             onClick={e => { e.stopPropagation(); equipWeapon(item); showToast(`⚔️ ${item.bloodlineName ?? 'ゲノム'}を装備`); }}
                                             style={{
-                                                padding: '2px 8px', fontSize: 9, marginLeft: 6,
+                                                padding: '2px 8px', fontSize: 9, flexShrink: 0,
                                                 background: 'rgba(0,210,255,0.1)', border: '1px solid rgba(0,210,255,0.3)',
                                                 borderRadius: 4, color: 'var(--accent-cyan)', cursor: 'pointer',
-                                                whiteSpace: 'nowrap',
+                                                whiteSpace: 'nowrap', textAlign: 'center',
                                             }}
                                         >
                                             装備
                                         </button>
-                                    )}
+                                    ) : <div />}
                                 </div>
 
                                 {/* Expanded detail + Pedigree */}
