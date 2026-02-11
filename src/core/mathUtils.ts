@@ -1,0 +1,98 @@
+/**
+ * Chimera Gear: Text Edition — Shared Math Utilities
+ * Centralized numeric models used across Genetic, Battle, and Breeding systems.
+ */
+
+import type { Genome } from './GeneticEngine';
+
+// ========== GENE UTILITIES ==========
+
+/** Clamp a gene value to [0, 1] */
+export function clampGene(value: number): number {
+    return Math.max(0, Math.min(1, value));
+}
+
+// ========== SOFT CAP ==========
+
+/**
+ * Apply soft cap to genome: if total gene sum exceeds `cap`,
+ * compress excess by `compressionRate` (default 10%).
+ * Returns a new genome array (does not mutate).
+ */
+export function applySoftCap(
+    genome: Genome,
+    cap: number = 7.0,
+    compressionRate: number = 0.1,
+): Genome {
+    const totalSum = genome.reduce((a, b) => a + b, 0);
+    if (totalSum <= cap) return genome;
+    const excess = totalSum - cap;
+    const scale = 1 - (excess / totalSum) * compressionRate;
+    return genome.map(g => clampGene(g * scale));
+}
+
+// ========== RESISTANCE BOOST ==========
+
+export type ElementLabel = 'Fire' | 'Ice' | 'Lightning';
+
+/**
+ * Boost elemental resistance on a genome.
+ * Fire  → gene[8], Ice → gene[9],
+ * Lightning → derived (lower fire+ice raises it), so boost both by half.
+ * Returns a new genome array.
+ */
+export function boostResistance(
+    genome: Genome,
+    element: ElementLabel,
+    amount: number,
+): Genome {
+    const g = [...genome];
+    if (element === 'Fire') {
+        g[8] = clampGene(g[8] + amount);
+    } else if (element === 'Ice') {
+        g[9] = clampGene(g[9] + amount);
+    } else if (element === 'Lightning') {
+        // Lightning resist is derived from 1 - avg(fire, ice)*0.6
+        // To raise it, we reduce fire+ice or split the boost
+        g[8] = clampGene(g[8] + amount * 0.5);
+        g[9] = clampGene(g[9] + amount * 0.5);
+    }
+    return g;
+}
+
+// ========== BREEDING COST ==========
+
+const RANK_COST_MAP: Record<string, number> = {
+    D: 1, C: 1, B: 1.5, A: 2, S: 3, SS: 5,
+};
+
+/**
+ * Calculate breeding EP cost.
+ * Formula: round(baseCost × generation² × rankMultiplier) + lockedGenes × lockCostPerGene
+ */
+export function calculateBreedingCost(
+    generation: number,
+    bestRank: string,
+    lockedGeneCount: number,
+    baseCost: number = 10,
+    lockCostPerGene: number = 10,
+): { breedCost: number; totalCost: number } {
+    const genCost = generation * generation;
+    const rankMult = RANK_COST_MAP[bestRank] ?? 1;
+    const breedCost = Math.round(baseCost * genCost * rankMult);
+    const totalCost = breedCost + lockedGeneCount * lockCostPerGene;
+    return { breedCost, totalCost };
+}
+
+// ========== DIMINISHING RETURNS ==========
+
+/**
+ * Apply diminishing returns to a value as generation increases.
+ * Returns a reduced multiplier: baseValue shrinks gently at high generations.
+ * gen 1-5: ~baseValue, gen 10: ~87%, gen 20+: ~67%
+ */
+export function diminishingReturns(baseValue: number, generation: number): number {
+    // Logarithmic decay: base / (1 + ln(gen) * 0.25)
+    const decay = 1 + Math.log(Math.max(1, generation)) * 0.25;
+    return baseValue / decay;
+}

@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chimera Gear: Text Edition</title>
+  </head>
+  <body>
+    <script>
+      window.onerror = function(msg, url, line, col, error) {
+        console.error("Global Error:", msg, "\nURL:", url, "\nLine:", line, "\nCol:", col, "\nError:", error);
+        document.body.innerHTML += '<div style="color:red; background:black; padding:10px; z-index:9999; position:absolute; top:0; left:0;">' + 
+          'Global Error: ' + msg + '</div>';
+      };
+      
+      window.addEventListener('unhandledrejection', function(event) {
+        console.error("Unhandled Rejection:", event.reason);
+      });
+    </script>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
