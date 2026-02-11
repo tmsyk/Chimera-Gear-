@@ -77,6 +77,24 @@ function GeneCard({ item, selected, onClick, isEquipped, onCrystallize, onEquip 
                         </div>
                     );
                 })}
+                {/* Lightning resistance — derived value */}
+                {(() => {
+                    const lrVal = stats.lightningResist;
+                    const lrWidth = Math.max(lrVal * lrVal * 100, lrVal > 0.01 ? 5 : 0);
+                    return (
+                        <div className="gene-bar-row">
+                            <span className="gene-bar-label">⚡雷耐性</span>
+                            <div className="gene-bar-track" style={{ position: 'relative' }}>
+                                <div style={{ position: 'absolute', left: '36%', top: 0, bottom: 0, width: 1, background: 'rgba(255,255,255,0.08)' }} title="A" />
+                                <div style={{ position: 'absolute', left: '64%', top: 0, bottom: 0, width: 1, background: 'rgba(255,255,255,0.12)' }} title="S" />
+                                <div
+                                    className="gene-bar-fill"
+                                    style={{ width: `${lrWidth}%`, background: 'var(--accent-yellow, #ffd700)' }}
+                                />
+                            </div>
+                        </div>
+                    );
+                })()}
             </div>
             <div className="gene-card-meta">
                 <span>Gen.{item.generation}</span>

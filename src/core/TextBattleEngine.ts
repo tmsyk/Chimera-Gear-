@@ -118,6 +118,14 @@ export class TextBattleEngine {
             // === Trait: HP decay per second ===
             if (traitEffects.hpDecayPerSec > 0) {
                 weapon.currentHp -= weapon.stats.maxHp * traitEffects.hpDecayPerSec * tickInterval;
+                weapon.currentHp = Math.max(0, weapon.currentHp);
+                if (weapon.currentHp <= 0) {
+                    logs.push({
+                        time, actor: 'weapon', action: 'defend',
+                        message: `💀 キメラ兵器は自壊した…`,
+                    });
+                    break;
+                }
             }
 
             // === Trait: Berserk activation ===
@@ -133,7 +141,7 @@ export class TextBattleEngine {
                 }
             }
 
-            // Process weapon action
+            // ── Weapon action phase ──
             weapon.cooldown -= tickInterval;
             if (weapon.cooldown <= 0) {
                 const action = this.selectAction(weapon, enemy, weaponGenome);
@@ -157,9 +165,24 @@ export class TextBattleEngine {
                     }
                 }
                 weapon.cooldown = weapon.stats.attackSpeed;
+
+                // Clamp HP
+                enemy.currentHp = Math.max(0, enemy.currentHp);
+                weapon.currentHp = Math.max(0, weapon.currentHp);
+
+                // Immediate check: did enemy die from weapon's attack?
+                if (enemy.currentHp <= 0) {
+                    logs.push({
+                        time, actor: 'weapon', action: 'attack',
+                        message: `🏆 ${weapon.name}が${enemy.name}を撃破！`,
+                    });
+                    break;
+                }
             }
 
-            // Process enemy action
+            // ── Enemy action phase (only if weapon still alive) ──
+            if (weapon.currentHp <= 0) break;
+
             enemy.cooldown -= tickInterval;
             if (enemy.cooldown <= 0) {
                 const action = this.selectAction(enemy, weapon, enemyGenome);
@@ -173,6 +196,7 @@ export class TextBattleEngine {
                         if (traitEffects.selfDestructChance > 0 && Math.random() < traitEffects.selfDestructChance) {
                             const selfDmg = Math.round(weapon.stats.maxHp * 0.25);
                             weapon.currentHp -= selfDmg;
+                            weapon.currentHp = Math.max(0, weapon.currentHp);
                             logs.push({
                                 time, actor: 'weapon', action: 'attack',
                                 message: `☢️ [${time.toFixed(1)}s] 不安定な核が暴走！ 自爆ダメージ ${selfDmg}`,
@@ -188,20 +212,32 @@ export class TextBattleEngine {
                     }
                 }
                 enemy.cooldown = enemy.stats.attackSpeed;
+
+                // Clamp HP
+                enemy.currentHp = Math.max(0, enemy.currentHp);
+                weapon.currentHp = Math.max(0, weapon.currentHp);
+
+                // Immediate check: did weapon die from enemy's attack?
+                if (weapon.currentHp <= 0) {
+                    logs.push({
+                        time, actor: 'weapon', action: 'defend',
+                        message: `💀 キメラ兵器は破壊された…`,
+                    });
+                    break;
+                }
+
+                // Did enemy die from thorn?
+                if (enemy.currentHp <= 0) {
+                    logs.push({
+                        time, actor: 'weapon', action: 'attack',
+                        message: `🏆 反射ダメージで${enemy.name}を撃破！`,
+                    });
+                    break;
+                }
             }
 
             // Track resisted damage for adaptation score
             totalAttempedDamage += totalDamageDealt;
-
-            // Immediate HP0 check: if weapon died mid-tick, stop NOW
-            if (weapon.currentHp <= 0) {
-                weapon.currentHp = 0;
-                logs.push({
-                    time, actor: 'weapon', action: 'defend',
-                    message: `💀 キメラ兵器は破壊された…`,
-                });
-                break;
-            }
         }
 
         const won = enemy.currentHp <= 0 && weapon.currentHp > 0;
@@ -213,22 +249,22 @@ export class TextBattleEngine {
             ? 1.0 - (resistedDamage / Math.max(1, totalAttempedDamage))
             : 0.5;
 
-        // End log
-        if (won) {
+        // End log — only for timeout (HP0 cases already logged inline)
+        if (won && !logs.some(l => l.message.includes('撃破'))) {
             logs.push({
                 time,
                 actor: 'weapon',
                 action: 'attack',
                 message: `🏆 ${weapon.name}の勝利！ キルタイム: ${killTime.toFixed(1)}秒`,
             });
-        } else if (weapon.currentHp <= 0) {
+        } else if (weapon.currentHp <= 0 && !logs.some(l => l.message.includes('破壊された') || l.message.includes('自壊した'))) {
             logs.push({
                 time,
                 actor: 'enemy',
                 action: 'attack',
                 message: `💀 ${weapon.name}は破壊された...`,
             });
-        } else {
+        } else if (time >= maxTime && weapon.currentHp > 0 && enemy.currentHp > 0) {
             logs.push({
                 time,
                 actor: 'weapon',

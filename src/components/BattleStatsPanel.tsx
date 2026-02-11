@@ -343,8 +343,8 @@ export function BattleStatsPanel() {
         }
     }, [equippedWeapon, store]);
 
-    const hpPercent = weaponMaxHp > 0 ? (weaponHp / weaponMaxHp) * 100 : 0;
-    const enemyHpPercent = enemyMaxHp > 0 ? (enemyHp / enemyMaxHp) * 100 : 0;
+    const hpPercent = weaponMaxHp > 0 ? Math.max(0, (weaponHp / weaponMaxHp) * 100) : 0;
+    const enemyHpPercent = enemyMaxHp > 0 ? Math.max(0, (enemyHp / enemyMaxHp) * 100) : 0;
     const hpClass = hpPercent > 60 ? 'high' : hpPercent > 30 ? 'mid' : 'low';
     const ehpClass = enemyHpPercent > 60 ? 'high' : enemyHpPercent > 30 ? 'mid' : 'low';
 
@@ -620,9 +620,52 @@ export function BattleStatsPanel() {
                                 )}
                             </>
                         ) : (
-                            <div className="breeding-banner" style={{ background: 'rgba(255,50,50,0.15)', borderColor: 'var(--accent-red)' }}>
-                                💀 ステージ {stage} 失敗… 配合で強化して再挑戦！
-                            </div>
+                            <>
+                                <div className="breeding-banner" style={{ background: 'rgba(255,50,50,0.15)', borderColor: 'var(--accent-red)' }}>
+                                    💀 ステージ {stage} 失敗… 配合で強化して再挑戦！
+                                </div>
+                                {equippedWeapon && (
+                                    <button
+                                        className="btn btn-primary"
+                                        style={{ width: '100%' }}
+                                        onClick={() => {
+                                            weaponCarryHpRef.current = null;
+                                            store.exitBreedingPhase();
+                                            store.setStageSummary(null);
+                                        }}
+                                    >
+                                        ⚔️ Wave 1 開始（同じステージに再挑戦）
+                                    </button>
+                                )}
+                                {maxClearedStage >= 1 && equippedWeapon && (
+                                    <button
+                                        className="btn btn-secondary"
+                                        style={{ width: '100%', background: 'rgba(0, 229, 255, 0.08)', borderColor: 'var(--accent-cyan)', color: 'var(--accent-cyan)' }}
+                                        onClick={async () => {
+                                            weaponCarryHpRef.current = null;
+                                            store.exitBreedingPhase();
+                                            store.setStageSummary(null);
+                                            store.setStage(1);
+                                            // Small delay then start continuous loop
+                                            await new Promise(r => setTimeout(r, 100));
+                                            abortRef.current = false;
+                                            let currentLoopStage = 1;
+                                            while (!abortRef.current && currentLoopStage <= maxClearedStage) {
+                                                await runBattle();
+                                                const s = useGameStore.getState();
+                                                if (s.isBreedingPhase) break;
+                                                currentLoopStage++;
+                                                if (currentLoopStage <= maxClearedStage) {
+                                                    store.advanceStage();
+                                                    store.exitBreedingPhase();
+                                                }
+                                            }
+                                        }}
+                                    >
+                                        🔄 連続周回（Stage 1～{maxClearedStage}）
+                                    </button>
+                                )}
+                            </>
                         )}
                         <button
                             className="btn btn-secondary"
