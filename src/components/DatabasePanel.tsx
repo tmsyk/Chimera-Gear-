@@ -11,7 +11,11 @@ import { GENE_NAMES } from '../core/GeneticEngine';
 import { GENETIC_DISEASE_LABELS, MAX_BREED_COUNT } from '../core/PedigreeSystem';
 import type { Item } from '../core/GeneticEngine';
 
-function AncestorNode({ item, label, archivedStatus }: { item: Item | null; label: string; archivedStatus?: 'crystallized' | 'decomposed' }) {
+function AncestorNode({ item, label, archivedStatus, finalMastery, highestStage }: {
+    item: Item | null; label: string;
+    archivedStatus?: 'crystallized' | 'decomposed';
+    finalMastery?: number; highestStage?: number;
+}) {
     if (!item) return (
         <div className="pedigree-node unknown">
             <div style={{ fontSize: 9, color: 'var(--text-dim)' }}>{label}</div>
@@ -29,6 +33,12 @@ function AncestorNode({ item, label, archivedStatus }: { item: Item | null; labe
             <div style={{ fontSize: 11, fontWeight: 700 }}>{ItemDecoder.getElementLabel(stats.element).slice(0, 3)}</div>
             <div style={{ fontSize: 9, color: 'var(--text-secondary)' }}>Gen.{item.generation} | DPS {dps}</div>
             {statusLabel && <div style={{ fontSize: 7, color: 'var(--accent-gold, #ffd700)', fontWeight: 700, marginTop: 1 }}>{statusLabel}</div>}
+            {archivedStatus && (finalMastery != null || highestStage != null) && (
+                <div style={{ fontSize: 7, color: 'var(--text-dim)', marginTop: 1 }}>
+                    {finalMastery != null && `🔮${finalMastery}`}{finalMastery != null && highestStage != null && ' '}
+                    {highestStage != null && `St.${highestStage}`}
+                </div>
+            )}
         </div>
     );
 }
@@ -43,7 +53,7 @@ export function DatabasePanel() {
 
     // Build combined ancestor lookup: inventory + archived ancestors
     const ancestorLookup = useMemo(() => {
-        const map = new Map<string, { item: Item; status?: 'crystallized' | 'decomposed' }>();
+        const map = new Map<string, { item: Item; status?: 'crystallized' | 'decomposed'; finalMastery?: number; highestStage?: number }>();
         // Live inventory items first (highest priority)
         for (const item of inventory) map.set(item.id, { item });
         // Archived ancestors (decomposed/crystallized)
@@ -60,13 +70,15 @@ export function DatabasePanel() {
                         bloodlineName: a.bloodlineName,
                     } as Item,
                     status: a.status,
+                    finalMastery: a.finalMastery,
+                    highestStage: a.highestStage,
                 });
             }
         }
         return map;
     }, [inventory, ancestors]);
 
-    const findAncestor = useCallback((id: string): { item: Item | null; status?: 'crystallized' | 'decomposed' } => {
+    const findAncestor = useCallback((id: string): { item: Item | null; status?: 'crystallized' | 'decomposed'; finalMastery?: number; highestStage?: number } => {
         const found = ancestorLookup.get(id);
         return found ?? { item: null };
     }, [ancestorLookup]);
@@ -340,8 +352,8 @@ export function DatabasePanel() {
                                                 </div>
                                                 <div className="pedigree-connector">┣━━━━━━━━┫</div>
                                                 <div className="pedigree-level">
-                                                    {(() => { const a = findAncestor(item.parentIds[0]); return <AncestorNode item={a.item} label="親A" archivedStatus={a.status} />; })()}
-                                                    {(() => { const b = findAncestor(item.parentIds[1]); return <AncestorNode item={b.item} label="親B" archivedStatus={b.status} />; })()}
+                                                    {(() => { const a = findAncestor(item.parentIds[0]); return <AncestorNode item={a.item} label="親A" archivedStatus={a.status} finalMastery={a.finalMastery} highestStage={a.highestStage} />; })()}
+                                                    {(() => { const b = findAncestor(item.parentIds[1]); return <AncestorNode item={b.item} label="親B" archivedStatus={b.status} finalMastery={b.finalMastery} highestStage={b.highestStage} />; })()}
                                                 </div>
                                                 {/* Grandparents */}
                                                 {(() => {
@@ -357,8 +369,8 @@ export function DatabasePanel() {
                                                             <div className="pedigree-level grandparents">
                                                                 {pA?.parentIds ? (
                                                                     <>
-                                                                        {(() => { const g = findAncestor(pA.parentIds[0]); return <AncestorNode item={g.item} label="祖A1" archivedStatus={g.status} />; })()}
-                                                                        {(() => { const g = findAncestor(pA.parentIds[1]); return <AncestorNode item={g.item} label="祖A2" archivedStatus={g.status} />; })()}
+                                                                        {(() => { const g = findAncestor(pA.parentIds[0]); return <AncestorNode item={g.item} label="祖A1" archivedStatus={g.status} finalMastery={g.finalMastery} highestStage={g.highestStage} />; })()}
+                                                                        {(() => { const g = findAncestor(pA.parentIds[1]); return <AncestorNode item={g.item} label="祖A2" archivedStatus={g.status} finalMastery={g.finalMastery} highestStage={g.highestStage} />; })()}
                                                                     </>
                                                                 ) : (
                                                                     <>
@@ -368,8 +380,8 @@ export function DatabasePanel() {
                                                                 )}
                                                                 {pB?.parentIds ? (
                                                                     <>
-                                                                        {(() => { const g = findAncestor(pB.parentIds[0]); return <AncestorNode item={g.item} label="祖B1" archivedStatus={g.status} />; })()}
-                                                                        {(() => { const g = findAncestor(pB.parentIds[1]); return <AncestorNode item={g.item} label="祖B2" archivedStatus={g.status} />; })()}
+                                                                        {(() => { const g = findAncestor(pB.parentIds[0]); return <AncestorNode item={g.item} label="祖B1" archivedStatus={g.status} finalMastery={g.finalMastery} highestStage={g.highestStage} />; })()}
+                                                                        {(() => { const g = findAncestor(pB.parentIds[1]); return <AncestorNode item={g.item} label="祖B2" archivedStatus={g.status} finalMastery={g.finalMastery} highestStage={g.highestStage} />; })()}
                                                                     </>
                                                                 ) : (
                                                                     <>

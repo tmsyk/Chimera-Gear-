@@ -208,6 +208,8 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
             bloodlineName: item.bloodlineName,
             status: 'decomposed' as const,
             archivedAt: Date.now(),
+            finalMastery: item.mastery ?? 0,
+            highestStage: state.maxClearedStage,
         }));
 
         set({
@@ -258,6 +260,8 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
                 bloodlineName: item.bloodlineName,
                 status: 'crystallized',
                 archivedAt: Date.now(),
+                finalMastery: item.mastery ?? 0,
+                highestStage: state.maxClearedStage,
             });
         }
         set({
@@ -350,6 +354,8 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
             bloodlineName: item.bloodlineName,
             status: 'crystallized',
             archivedAt: Date.now(),
+            finalMastery: item.mastery ?? 0,
+            highestStage: state.maxClearedStage,
         };
 
         set({

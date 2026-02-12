@@ -250,18 +250,20 @@ export function BattleStatsPanel() {
                             totalGenesCollected++;
                             if (fit > totalBestFitness) totalBestFitness = fit;
 
-                            // Rank-based drop log with visual effects
+                            // Rank-based drop log with distinct flavor text per tier
                             const rating = ItemDecoder.getRating(lootItem);
                             const estimatedEP = 10; // base decompose value
                             let dropMsg: string;
                             if (rating === 'SS') {
-                                dropMsg = `\n🔶 [!!! 極稀少信号 !!!] 伝説的個体のパーツを検知！\n>> 報告: 敵個体より 【遺伝子チップ: ランクSS】 を回収。推定EP: ${estimatedEP}`;
+                                dropMsg = `\n🔶 [!!! 極稀少信号 !!!] 未知の遺伝子構造を検知！\n>> 分析完了: 【遺伝子チップ: ランクSS】 を回収。原初の系譜に連なる因子を確認。推定EP: ${estimatedEP}`;
                             } else if (rating === 'S') {
-                                dropMsg = `★ 報告: 敵個体より 【遺伝子チップ: ランク${rating}】 の回収に成功。推定EP: ${estimatedEP}`;
+                                dropMsg = `★ >> 高品質遺伝子反応を捕捉。【遺伝子チップ: ランクS】 を回収。突然変異の兆候あり。推定EP: ${estimatedEP}`;
                             } else if (rating === 'A') {
-                                dropMsg = `◆ 報告: 敵個体より 【遺伝子チップ: ランク${rating}】 の回収に成功。推定EP: ${estimatedEP}`;
+                                dropMsg = `◆ >> 報告: 敵残骸より 【遺伝子チップ: ランクA】 を摘出。良質な因子配列を確認。推定EP: ${estimatedEP}`;
+                            } else if (rating === 'B') {
+                                dropMsg = `▷ >> 報告: 【遺伝子チップ: ランクB】 を回収。標準的な遺伝子構造。推定EP: ${estimatedEP}`;
                             } else {
-                                dropMsg = `>> 報告: 敵個体より 【遺伝子チップ: ランク${rating}】 を回収。推定EP: ${estimatedEP}`;
+                                dropMsg = `>> 汎用遺伝子チップ（ランク${rating}）を回収。特筆事項なし。推定EP: ${estimatedEP}`;
                             }
                             store.addBattleLog({
                                 time: 0, actor: 'weapon', action: 'attack',

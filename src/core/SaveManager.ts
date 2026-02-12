@@ -17,6 +17,8 @@ export interface ArchivedAncestor {
     bloodlineName?: string;
     status: 'decomposed' | 'crystallized';
     archivedAt: number;
+    finalMastery?: number;   // mastery at time of archive
+    highestStage?: number;   // highest stage reached with this item
 }
 
 // ========== DATABASE SCHEMA ==========

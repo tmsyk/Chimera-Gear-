@@ -123,6 +123,16 @@ export class TextBattleEngine {
             message: `⚔️ 戦闘開始 — ${ItemDecoder.getElementLabel(wStats.element)}属性 vs ${ItemDecoder.getElementLabel(eStats.element)}属性${traitInfo}${synergyInfo}`,
         });
 
+        // Mastery 100 bonus announcement
+        if (isGolden) {
+            logs.push({
+                time: 0,
+                actor: 'weapon',
+                action: 'attack',
+                message: `>> システム: 同期率100%。リミッター解除。全能力に習熟ボーナスを適用。`,
+            });
+        }
+
         // Berserk tracking
         let berserkActive = false;
         let battleOver = false;
