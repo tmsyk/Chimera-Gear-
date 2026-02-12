@@ -128,22 +128,28 @@ export class TextBattleEngine {
         let battleOver = false;
 
         // Unified death check — returns true if battle should end
+        // Uses < 0.01 threshold instead of <= 0 to handle floating-point rounding errors
+        const HP_DEATH_THRESHOLD = 0.01;
         const checkDeath = (): boolean => {
             weapon.currentHp = Math.max(0, weapon.currentHp);
             enemy.currentHp = Math.max(0, enemy.currentHp);
 
-            if (enemy.currentHp <= 0) {
+            if (enemy.currentHp < HP_DEATH_THRESHOLD) {
+                enemy.currentHp = 0;
                 logs.push({
                     time, actor: 'weapon', action: 'attack',
                     message: `🏆 >> ターゲットの完全破壊を確認。`,
                 });
+                console.warn(`[Engine] checkDeath: enemy killed at t=${time.toFixed(1)}s (eHP=${enemy.currentHp})`);
                 return true;
             }
-            if (weapon.currentHp <= 0) {
+            if (weapon.currentHp < HP_DEATH_THRESHOLD) {
+                weapon.currentHp = 0;
                 logs.push({
                     time, actor: 'weapon', action: 'defend',
                     message: `💀 >> 深刻な損傷。強制撤退します。`,
                 });
+                console.warn(`[Engine] checkDeath: weapon destroyed at t=${time.toFixed(1)}s (wHP=${weapon.currentHp})`);
                 return true;
             }
             return false;
@@ -156,11 +162,13 @@ export class TextBattleEngine {
             if (traitEffects.hpDecayPerSec > 0) {
                 weapon.currentHp -= weapon.stats.maxHp * traitEffects.hpDecayPerSec * tickInterval;
                 weapon.currentHp = Math.max(0, weapon.currentHp);
-                if (weapon.currentHp <= 0) {
+                if (weapon.currentHp < HP_DEATH_THRESHOLD) {
+                    weapon.currentHp = 0;
                     logs.push({
                         time, actor: 'weapon', action: 'defend',
-                        message: `💀 キメラ兵器は自壊した…`,
+                        message: `💀 >> キメラ兵器は自壊した…`,
                     });
+                    console.warn(`[Engine] HP decay self-destruct at t=${time.toFixed(1)}s`);
                     battleOver = true;
                     break;
                 }
@@ -250,16 +258,16 @@ export class TextBattleEngine {
 
         // Determine end reason
         let endReason: BattleResult['endReason'];
-        if (enemy.currentHp <= 0) {
+        if (enemy.currentHp < HP_DEATH_THRESHOLD) {
             endReason = 'enemy_killed';
-        } else if (weapon.currentHp <= 0) {
+        } else if (weapon.currentHp < HP_DEATH_THRESHOLD) {
             const lastLog = logs[logs.length - 1];
             endReason = lastLog?.message.includes('自壊') ? 'weapon_selfkill' : 'weapon_destroyed';
         } else {
             endReason = 'timeout';
         }
 
-        const won = enemy.currentHp <= 0 && weapon.currentHp > 0;
+        const won = enemy.currentHp < HP_DEATH_THRESHOLD && weapon.currentHp >= HP_DEATH_THRESHOLD;
         const killTime = won ? time : Infinity;
         const damageRatio = totalDamageTaken > 0 ? totalDamageDealt / totalDamageTaken : totalDamageDealt > 0 ? 999 : 1;
 
@@ -274,8 +282,9 @@ export class TextBattleEngine {
                 time,
                 actor: 'weapon',
                 action: 'attack',
-                message: `⏱️ タイムアウト — 決着つかず`,
+                message: `⏱️ >> タイムアウト — 決着つかず`,
             });
+            console.warn(`[Engine] timeout at t=${time.toFixed(1)}s (wHP=${weapon.currentHp.toFixed(1)}, eHP=${enemy.currentHp.toFixed(1)})`);
         }
 
         return {

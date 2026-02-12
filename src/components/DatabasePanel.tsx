@@ -11,7 +11,7 @@ import { GENE_NAMES } from '../core/GeneticEngine';
 import { GENETIC_DISEASE_LABELS, MAX_BREED_COUNT } from '../core/PedigreeSystem';
 import type { Item } from '../core/GeneticEngine';
 
-function AncestorNode({ item, label }: { item: Item | null; label: string }) {
+function AncestorNode({ item, label, archivedStatus }: { item: Item | null; label: string; archivedStatus?: 'crystallized' | 'decomposed' }) {
     if (!item) return (
         <div className="pedigree-node unknown">
             <div style={{ fontSize: 9, color: 'var(--text-dim)' }}>{label}</div>
@@ -20,11 +20,15 @@ function AncestorNode({ item, label }: { item: Item | null; label: string }) {
     );
     const stats = ItemDecoder.decode(item.genome);
     const dps = (stats.attack / stats.attackSpeed).toFixed(0);
+    const statusLabel = archivedStatus === 'crystallized' ? '💎CRYSTALIZED'
+        : archivedStatus === 'decomposed' ? '🔬DECOMPOSED'
+            : null;
     return (
-        <div className="pedigree-node">
+        <div className="pedigree-node" style={archivedStatus ? { opacity: 0.7, borderStyle: 'dashed' } : undefined}>
             <div style={{ fontSize: 9, color: 'var(--text-dim)' }}>{label}</div>
             <div style={{ fontSize: 11, fontWeight: 700 }}>{ItemDecoder.getElementLabel(stats.element).slice(0, 3)}</div>
             <div style={{ fontSize: 9, color: 'var(--text-secondary)' }}>Gen.{item.generation} | DPS {dps}</div>
+            {statusLabel && <div style={{ fontSize: 7, color: 'var(--accent-gold, #ffd700)', fontWeight: 700, marginTop: 1 }}>{statusLabel}</div>}
         </div>
     );
 }
@@ -32,18 +36,40 @@ function AncestorNode({ item, label }: { item: Item | null; label: string }) {
 type SortKey = 'fitness' | 'generation' | 'rating' | 'dps' | 'element' | 'mastery';
 
 export function DatabasePanel() {
-    const { inventory, geneEnergy, decompose, equipWeapon, equippedWeapon, showToast, crystallizedItems, toggleItemLock } = useGameStore();
+    const { inventory, geneEnergy, decompose, equipWeapon, equippedWeapon, showToast, crystallizedItems, toggleItemLock, ancestors } = useGameStore();
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [sortBy, setSortBy] = useState<SortKey>('fitness');
     const [expandedId, setExpandedId] = useState<string | null>(null);
 
-    const inventoryMap = useMemo(() => {
-        const map = new Map<string, Item>();
-        for (const item of inventory) map.set(item.id, item);
+    // Build combined ancestor lookup: inventory + archived ancestors
+    const ancestorLookup = useMemo(() => {
+        const map = new Map<string, { item: Item; status?: 'crystallized' | 'decomposed' }>();
+        // Live inventory items first (highest priority)
+        for (const item of inventory) map.set(item.id, { item });
+        // Archived ancestors (decomposed/crystallized)
+        for (const a of (ancestors ?? [])) {
+            if (!map.has(a.id)) {
+                // Reconstruct minimal Item from ArchivedAncestor
+                map.set(a.id, {
+                    item: {
+                        id: a.id,
+                        genome: a.genome,
+                        generation: a.generation,
+                        fitness: 0,
+                        parentIds: a.parentIds,
+                        bloodlineName: a.bloodlineName,
+                    } as Item,
+                    status: a.status,
+                });
+            }
+        }
         return map;
-    }, [inventory]);
+    }, [inventory, ancestors]);
 
-    const findAncestor = useCallback((id: string) => inventoryMap.get(id) ?? null, [inventoryMap]);
+    const findAncestor = useCallback((id: string): { item: Item | null; status?: 'crystallized' | 'decomposed' } => {
+        const found = ancestorLookup.get(id);
+        return found ?? { item: null };
+    }, [ancestorLookup]);
 
     const sortedInventory = useMemo(() => {
         const sorted = [...inventory];
@@ -314,13 +340,15 @@ export function DatabasePanel() {
                                                 </div>
                                                 <div className="pedigree-connector">┣━━━━━━━━┫</div>
                                                 <div className="pedigree-level">
-                                                    <AncestorNode item={findAncestor(item.parentIds[0])} label="親A" />
-                                                    <AncestorNode item={findAncestor(item.parentIds[1])} label="親B" />
+                                                    {(() => { const a = findAncestor(item.parentIds[0]); return <AncestorNode item={a.item} label="親A" archivedStatus={a.status} />; })()}
+                                                    {(() => { const b = findAncestor(item.parentIds[1]); return <AncestorNode item={b.item} label="親B" archivedStatus={b.status} />; })()}
                                                 </div>
                                                 {/* Grandparents */}
                                                 {(() => {
-                                                    const pA = findAncestor(item.parentIds[0]);
-                                                    const pB = findAncestor(item.parentIds[1]);
+                                                    const pAResult = findAncestor(item.parentIds[0]);
+                                                    const pBResult = findAncestor(item.parentIds[1]);
+                                                    const pA = pAResult.item;
+                                                    const pB = pBResult.item;
                                                     const hasGrand = pA?.parentIds || pB?.parentIds;
                                                     if (!hasGrand) return null;
                                                     return (
@@ -329,8 +357,8 @@ export function DatabasePanel() {
                                                             <div className="pedigree-level grandparents">
                                                                 {pA?.parentIds ? (
                                                                     <>
-                                                                        <AncestorNode item={findAncestor(pA.parentIds[0])} label="祖A1" />
-                                                                        <AncestorNode item={findAncestor(pA.parentIds[1])} label="祖A2" />
+                                                                        {(() => { const g = findAncestor(pA.parentIds[0]); return <AncestorNode item={g.item} label="祖A1" archivedStatus={g.status} />; })()}
+                                                                        {(() => { const g = findAncestor(pA.parentIds[1]); return <AncestorNode item={g.item} label="祖A2" archivedStatus={g.status} />; })()}
                                                                     </>
                                                                 ) : (
                                                                     <>
@@ -340,8 +368,8 @@ export function DatabasePanel() {
                                                                 )}
                                                                 {pB?.parentIds ? (
                                                                     <>
-                                                                        <AncestorNode item={findAncestor(pB.parentIds[0])} label="祖B1" />
-                                                                        <AncestorNode item={findAncestor(pB.parentIds[1])} label="祖B2" />
+                                                                        {(() => { const g = findAncestor(pB.parentIds[0]); return <AncestorNode item={g.item} label="祖B1" archivedStatus={g.status} />; })()}
+                                                                        {(() => { const g = findAncestor(pB.parentIds[1]); return <AncestorNode item={g.item} label="祖B2" archivedStatus={g.status} />; })()}
                                                                     </>
                                                                 ) : (
                                                                     <>

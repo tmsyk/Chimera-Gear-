@@ -130,10 +130,14 @@ export function BattleStatsPanel() {
                     let runningWeaponHp = weaponCarryHpRef.current ?? wStats.maxHp;
                     let runningEnemyHp = eStats.maxHp;
 
-                    // Helper: check if this log is a terminal log (battle already decided)
-                    const isBattleEnd = (log: { message: string }) =>
-                        log.message.includes('完全破壊') || log.message.includes('強制撤退') ||
-                        log.message.includes('自壊') || log.message.includes('タイムアウト');
+                    // Helper: check if this log is a terminal SYSTEM message (must start with >> prefix)
+                    const isBattleEnd = (log: { message: string }) => {
+                        // Only match system-generated lines containing >> (not enemy skill names)
+                        const msg = log.message;
+                        if (!msg.includes('>>')) return false;
+                        return msg.includes('完全破壊') || msg.includes('強制撤退') ||
+                            msg.includes('自壊') || msg.includes('タイムアウト');
+                    };
 
                     if (speed >= 100) {
                         // At 100x: only show summary (first + last log) to avoid DOM overload
@@ -142,7 +146,7 @@ export function BattleStatsPanel() {
                     } else if (speed >= 10) {
                         // At 10x: stream all logs with abort + HP0 safeguard
                         for (let li = 0; li < result.logs.length; li++) {
-                            if (abortRef.current) break;
+                            if (abortRef.current) { console.warn('[Battle UI] 10x: aborted by user'); break; }
                             const log = result.logs[li];
                             store.addBattleLog(log);
                             if (log.damage) {
@@ -154,8 +158,15 @@ export function BattleStatsPanel() {
                                     setWeaponHp(Math.max(0, runningWeaponHp));
                                 }
                             }
-                            // Safeguard: stop if HP0 or terminal log reached
-                            if (runningEnemyHp <= 0 || runningWeaponHp <= 0 || isBattleEnd(log)) break;
+                            // Safeguard: stop if HP < 0.01 or terminal log reached
+                            if (runningEnemyHp < 0.01 || runningWeaponHp < 0.01) {
+                                console.warn(`[Battle UI] 10x: HP safeguard triggered (wHP=${runningWeaponHp.toFixed(1)}, eHP=${runningEnemyHp.toFixed(1)}) at log ${li}/${result.logs.length}`);
+                                break;
+                            }
+                            if (isBattleEnd(log)) {
+                                console.warn(`[Battle UI] 10x: terminal log detected: "${log.message}"`);
+                                break;
+                            }
                         }
                         await new Promise(r => setTimeout(r, 10));
                     } else {
@@ -163,6 +174,7 @@ export function BattleStatsPanel() {
                         const delay = 150;
                         for (let li = 0; li < result.logs.length; li++) {
                             if (abortRef.current) {
+                                console.warn('[Battle UI] 1x: aborted by user');
                                 if (battleTimerRef.current) {
                                     clearTimeout(battleTimerRef.current);
                                     battleTimerRef.current = null;
@@ -170,7 +182,7 @@ export function BattleStatsPanel() {
                                 break;
                             }
                             await new Promise(r => { battleTimerRef.current = window.setTimeout(r, delay) as unknown as number; });
-                            if (abortRef.current) break;
+                            if (abortRef.current) { console.warn('[Battle UI] 1x: aborted after await'); break; }
                             const log = result.logs[li];
                             store.addBattleLog(log);
 
@@ -183,8 +195,15 @@ export function BattleStatsPanel() {
                                     setWeaponHp(Math.max(0, runningWeaponHp));
                                 }
                             }
-                            // Safeguard: stop if HP0 or terminal log reached
-                            if (runningEnemyHp <= 0 || runningWeaponHp <= 0 || isBattleEnd(log)) break;
+                            // Safeguard: stop if HP < 0.01 or terminal log reached
+                            if (runningEnemyHp < 0.01 || runningWeaponHp < 0.01) {
+                                console.warn(`[Battle UI] 1x: HP safeguard triggered (wHP=${runningWeaponHp.toFixed(1)}, eHP=${runningEnemyHp.toFixed(1)}) at log ${li}/${result.logs.length}`);
+                                break;
+                            }
+                            if (isBattleEnd(log)) {
+                                console.warn(`[Battle UI] 1x: terminal log detected: "${log.message}"`);
+                                break;
+                            }
                         }
                         battleTimerRef.current = null;
                     }

@@ -11,6 +11,8 @@ import { FitnessCalculator } from '../core/FitnessCalculator';
 import { PedigreeSystem } from '../core/PedigreeSystem';
 import type { CrystallizedItem } from '../core/PedigreeSystem';
 import { SaveManager } from '../core/SaveManager';
+import type { ArchivedAncestor } from '../core/SaveManager';
+export type { ArchivedAncestor } from '../core/SaveManager';
 
 export type TabView = 'battle' | 'lab' | 'database';
 export type ItemCategory = 'battle' | 'breeding' | 'material';
@@ -67,6 +69,9 @@ export interface GameStoreState {
 
     // Pedigree: crystallized items (Hall of Fame)
     crystallizedItems: CrystallizedItem[];
+
+    // Pedigree: archived ancestors (logical deletion for family tree)
+    ancestors: ArchivedAncestor[];
 
     // Materials (elemental shards)
     materials: Record<MaterialType, number>;
@@ -159,6 +164,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
 
     // Pedigree
     crystallizedItems: [],
+    ancestors: [],
 
     // Materials
     materials: { fire_shard: 0, ice_shard: 0, lightning_shard: 0 },
@@ -192,9 +198,22 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
         const safeIds = ids.filter(id => id !== equippedId);
         const toRemove = state.inventory.filter(i => safeIds.includes(i.id));
         const energyGain = toRemove.length * 10;
+
+        // Archive items for pedigree before deletion
+        const newArchives: ArchivedAncestor[] = toRemove.map(item => ({
+            id: item.id,
+            genome: item.genome,
+            generation: item.generation,
+            parentIds: item.parentIds,
+            bloodlineName: item.bloodlineName,
+            status: 'decomposed' as const,
+            archivedAt: Date.now(),
+        }));
+
         set({
             inventory: state.inventory.filter(i => !safeIds.includes(i.id)),
             geneEnergy: state.geneEnergy + energyGain,
+            ancestors: [...state.ancestors, ...newArchives],
         });
     },
     spendEnergy: (amount) => {
@@ -225,17 +244,28 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
             !i.locked
         );
         const crystals: CrystallizedItem[] = [];
+        const archives: ArchivedAncestor[] = [];
         let totalEnergy = 0;
         for (const item of exhausted) {
             const crystal = PedigreeSystem.crystallize(item);
             crystals.push(crystal);
             totalEnergy += crystal.crystalBonus.energyYield;
+            archives.push({
+                id: item.id,
+                genome: item.genome,
+                generation: item.generation,
+                parentIds: item.parentIds,
+                bloodlineName: item.bloodlineName,
+                status: 'crystallized',
+                archivedAt: Date.now(),
+            });
         }
         set({
             inventory: state.inventory.filter(i =>
                 !exhausted.some(e => e.id === i.id)
             ),
             crystallizedItems: [...state.crystallizedItems, ...crystals],
+            ancestors: [...state.ancestors, ...archives],
             geneEnergy: state.geneEnergy + totalEnergy,
         });
         return crystals;
@@ -310,9 +340,22 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
         if (!item) return null;
 
         const crystal = PedigreeSystem.crystallize(item);
+
+        // Archive item for pedigree before crystallization
+        const archive: ArchivedAncestor = {
+            id: item.id,
+            genome: item.genome,
+            generation: item.generation,
+            parentIds: item.parentIds,
+            bloodlineName: item.bloodlineName,
+            status: 'crystallized',
+            archivedAt: Date.now(),
+        };
+
         set({
             inventory: state.inventory.filter(i => i.id !== itemId),
             crystallizedItems: [...state.crystallizedItems, crystal],
+            ancestors: [...state.ancestors, archive],
             geneEnergy: state.geneEnergy + crystal.crystalBonus.energyYield,
             equippedWeapon: state.equippedWeapon?.id === itemId ? null : state.equippedWeapon,
         });
@@ -367,6 +410,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
             geneEnergy: data.geneEnergy,
             materials: data.materials,
             crystallizedItems: data.crystallizedItems,
+            ancestors: data.ancestors ?? [],
             dpsHistory: data.dpsHistory,
             peakDps: data.peakDps,
             maxClearedStage: data.maxClearedStage ?? (data.stage > 1 ? data.stage - 1 : 0),

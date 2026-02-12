@@ -3,9 +3,21 @@
  */
 
 import Dexie from 'dexie';
-import type { Item } from './GeneticEngine';
+import type { Item, Genome } from './GeneticEngine';
 import type { CrystallizedItem } from './PedigreeSystem';
 import type { MaterialType } from '../store/useGameStore';
+
+// ========== ARCHIVED ANCESTOR ==========
+// Lightweight record for pedigree display after item is decomposed/crystallized
+export interface ArchivedAncestor {
+    id: string;
+    genome: Genome;
+    generation: number;
+    parentIds?: [string, string];
+    bloodlineName?: string;
+    status: 'decomposed' | 'crystallized';
+    archivedAt: number;
+}
 
 // ========== DATABASE SCHEMA ==========
 
@@ -18,6 +30,7 @@ interface SaveData {
     geneEnergy: number;
     materials: Record<MaterialType, number>;
     crystallizedItems: CrystallizedItem[];
+    ancestors: ArchivedAncestor[];
     dpsHistory: number[];
     peakDps: number;
     maxClearedStage: number;
@@ -52,6 +65,7 @@ export class SaveManager {
         geneEnergy: number;
         materials: Record<MaterialType, number>;
         crystallizedItems: CrystallizedItem[];
+        ancestors: ArchivedAncestor[];
         dpsHistory: number[];
         peakDps: number;
         maxClearedStage: number;
@@ -66,6 +80,7 @@ export class SaveManager {
                 geneEnergy: state.geneEnergy,
                 materials: state.materials,
                 crystallizedItems: state.crystallizedItems,
+                ancestors: state.ancestors ?? [],
                 dpsHistory: state.dpsHistory,
                 peakDps: state.peakDps,
                 maxClearedStage: state.maxClearedStage,
@@ -90,6 +105,7 @@ export class SaveManager {
         geneEnergy: number;
         materials: Record<MaterialType, number>;
         crystallizedItems: CrystallizedItem[];
+        ancestors: ArchivedAncestor[];
         dpsHistory: number[];
         peakDps: number;
         maxClearedStage: number;
@@ -134,6 +150,7 @@ export class SaveManager {
                 geneEnergy,
                 materials: data.materials ?? { fire_shard: 0, ice_shard: 0, lightning_shard: 0 },
                 crystallizedItems: Array.isArray(data.crystallizedItems) ? data.crystallizedItems : [],
+                ancestors: Array.isArray(data.ancestors) ? data.ancestors : [],
                 dpsHistory: Array.isArray(data.dpsHistory) ? data.dpsHistory : [],
                 peakDps,
                 maxClearedStage: typeof data.maxClearedStage === 'number'
