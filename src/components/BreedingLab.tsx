@@ -14,10 +14,11 @@ import type { SimulationResult } from '../core/FastSimulator';
 import { getTraitSummary } from '../core/TraitSystem';
 import { calculateBreedingCost, requiredMastery } from '../core/mathUtils';
 
-function GeneCard({ item, selected, onClick, isEquipped, onCrystallize, onEquip }: {
+function GeneCard({ item, selected, onClick, isEquipped, onCrystallize, onEquip, onDecompose }: {
     item: Item; selected: boolean; onClick: () => void; isEquipped?: boolean;
     onCrystallize?: (item: Item) => void;
     onEquip?: (item: Item) => void;
+    onDecompose?: (item: Item) => void;
 }) {
     const stats = ItemDecoder.decode(item.genome);
     const rating = ItemDecoder.getRating(item);
@@ -155,13 +156,26 @@ function GeneCard({ item, selected, onClick, isEquipped, onCrystallize, onEquip 
                     </button>
                 );
             })()}
+            {/* Sell (decompose) button — not for equipped or selected-as-parent */}
+            {!isEquipped && !selected && onDecompose && (
+                <button
+                    onClick={(e) => { e.stopPropagation(); onDecompose(item); }}
+                    style={{
+                        marginTop: 4, padding: '3px 10px', fontSize: 10, width: '100%',
+                        background: 'rgba(255, 107, 53, 0.06)', border: '1px solid rgba(255, 107, 53, 0.25)',
+                        borderRadius: 4, color: '#ff8c5a', cursor: 'pointer', fontWeight: 500,
+                    }}
+                >
+                    🔄 売却 (+10EP)
+                </button>
+            )}
         </div>
     );
 }
 
 export function BreedingLab() {
     const store = useGameStore();
-    const { inventory, equipWeapon, stage, exitBreedingPhase, isBreedingPhase, advanceStage, equippedWeapon, geneEnergy, showToast, stageSummary, setStageSummary, crystallizeItem, materials, bulkCrystallize } = store;
+    const { inventory, equipWeapon, stage, exitBreedingPhase, isBreedingPhase, advanceStage, equippedWeapon, geneEnergy, showToast, stageSummary, setStageSummary, crystallizeItem, materials, bulkCrystallize, decompose } = store;
     const [parentA, setParentA] = useState<Item | null>(null);
     const [parentB, setParentB] = useState<Item | null>(null);
     const [simResult, setSimResult] = useState<SimulationResult | null>(null);
@@ -467,6 +481,13 @@ export function BreedingLab() {
                                     isEquipped={isEquipped}
                                     onCrystallize={handleCrystallize}
                                     onEquip={(it) => { equipWeapon(it); showToast(`⚔️ ${it.bloodlineName ?? 'ゲノム'}を装備`); }}
+                                    onDecompose={(it) => {
+                                        // Clear parent selection if this item was selected
+                                        if (parentA?.id === it.id) setParentA(null);
+                                        if (parentB?.id === it.id) setParentB(null);
+                                        decompose([it.id]);
+                                        showToast(`🔄 ${it.bloodlineName ?? 'ゲノム'}を売却 (+10EP)`);
+                                    }}
                                 />
                             );
                         })
