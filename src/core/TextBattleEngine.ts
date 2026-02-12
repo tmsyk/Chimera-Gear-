@@ -125,8 +125,31 @@ export class TextBattleEngine {
 
         // Berserk tracking
         let berserkActive = false;
+        let battleOver = false;
 
-        while (time < maxTime && weapon.currentHp > 0 && enemy.currentHp > 0) {
+        // Unified death check — returns true if battle should end
+        const checkDeath = (): boolean => {
+            weapon.currentHp = Math.max(0, weapon.currentHp);
+            enemy.currentHp = Math.max(0, enemy.currentHp);
+
+            if (enemy.currentHp <= 0) {
+                logs.push({
+                    time, actor: 'weapon', action: 'attack',
+                    message: `🏆 ${weapon.name}が${enemy.name}を撃破！`,
+                });
+                return true;
+            }
+            if (weapon.currentHp <= 0) {
+                logs.push({
+                    time, actor: 'weapon', action: 'defend',
+                    message: `💀 キメラ兵器は破壊された…`,
+                });
+                return true;
+            }
+            return false;
+        };
+
+        while (time < maxTime && !battleOver) {
             time = Math.round((time + tickInterval) * 100) / 100;
 
             // === Trait: HP decay per second ===
@@ -138,6 +161,7 @@ export class TextBattleEngine {
                         time, actor: 'weapon', action: 'defend',
                         message: `💀 キメラ兵器は自壊した…`,
                     });
+                    battleOver = true;
                     break;
                 }
             }
@@ -180,22 +204,12 @@ export class TextBattleEngine {
                 }
                 weapon.cooldown = weapon.stats.attackSpeed;
 
-                // Clamp HP
-                enemy.currentHp = Math.max(0, enemy.currentHp);
-                weapon.currentHp = Math.max(0, weapon.currentHp);
-
-                // Immediate check: did enemy die from weapon's attack?
-                if (enemy.currentHp <= 0) {
-                    logs.push({
-                        time, actor: 'weapon', action: 'attack',
-                        message: `🏆 ${weapon.name}が${enemy.name}を撃破！`,
-                    });
-                    break;
-                }
+                // Check death after weapon action + traits
+                if (checkDeath()) { battleOver = true; break; }
             }
 
-            // ── Enemy action phase (only if weapon still alive) ──
-            if (weapon.currentHp <= 0) break;
+            // ── Enemy action phase (only if battle not over) ──
+            if (battleOver) break;
 
             enemy.cooldown -= tickInterval;
             if (enemy.cooldown <= 0) {
@@ -210,7 +224,6 @@ export class TextBattleEngine {
                         if (traitEffects.selfDestructChance > 0 && Math.random() < traitEffects.selfDestructChance) {
                             const selfDmg = Math.round(weapon.stats.maxHp * 0.25);
                             weapon.currentHp -= selfDmg;
-                            weapon.currentHp = Math.max(0, weapon.currentHp);
                             logs.push({
                                 time, actor: 'weapon', action: 'attack',
                                 message: `☢️ [${time.toFixed(1)}s] 不安定な核が暴走！ 自爆ダメージ ${selfDmg}`,
@@ -227,27 +240,8 @@ export class TextBattleEngine {
                 }
                 enemy.cooldown = enemy.stats.attackSpeed;
 
-                // Clamp HP
-                enemy.currentHp = Math.max(0, enemy.currentHp);
-                weapon.currentHp = Math.max(0, weapon.currentHp);
-
-                // Immediate check: did weapon die from enemy's attack?
-                if (weapon.currentHp <= 0) {
-                    logs.push({
-                        time, actor: 'weapon', action: 'defend',
-                        message: `💀 キメラ兵器は破壊された…`,
-                    });
-                    break;
-                }
-
-                // Did enemy die from thorn?
-                if (enemy.currentHp <= 0) {
-                    logs.push({
-                        time, actor: 'weapon', action: 'attack',
-                        message: `🏆 反射ダメージで${enemy.name}を撃破！`,
-                    });
-                    break;
-                }
+                // Check death after enemy action + traits
+                if (checkDeath()) { battleOver = true; break; }
             }
 
             // Track resisted damage for adaptation score
@@ -259,7 +253,6 @@ export class TextBattleEngine {
         if (enemy.currentHp <= 0) {
             endReason = 'enemy_killed';
         } else if (weapon.currentHp <= 0) {
-            // Check if self-kill (decay/self-destruct)
             const lastLog = logs[logs.length - 1];
             endReason = lastLog?.message.includes('自壊') ? 'weapon_selfkill' : 'weapon_destroyed';
         } else {
@@ -275,7 +268,7 @@ export class TextBattleEngine {
             ? 1.0 - (resistedDamage / Math.max(1, totalAttempedDamage))
             : 0.5;
 
-        // End log — only for timeout (HP0 cases already logged inline)
+        // End log — only for timeout (HP0 cases already logged by checkDeath)
         if (endReason === 'timeout') {
             logs.push({
                 time,

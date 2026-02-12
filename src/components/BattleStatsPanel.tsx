@@ -251,10 +251,18 @@ export function BattleStatsPanel() {
                         }
                     } else {
                         // HP=0 → weapon destroyed, abort stage
+                        // The engine's checkDeath already logged the destruction message
                         store.addBattleLog({
                             time: 0, actor: 'weapon', action: 'defend',
-                            message: `💀 キメラ兵器 破壊！ステージ撤退。`,
+                            message: `⚠️ ステージ撤退。`,
                         });
+
+                        // Brief delay so player can read the final logs
+                        const speed = useGameStore.getState().battleSpeed;
+                        if (speed < 100) {
+                            await new Promise(r => setTimeout(r, speed >= 10 ? 500 : 1500));
+                        }
+
                         store.setBattleResult(result);
                         weaponCarryHpRef.current = 0;
                         weaponDestroyed = true;
