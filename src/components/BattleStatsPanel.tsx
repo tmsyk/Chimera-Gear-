@@ -125,33 +125,44 @@ export function BattleStatsPanel() {
                     }
 
                     // Stream logs based on speed
+                    // UI-side HP tracking: defensive safeguard to stop display if HP reaches 0
                     const speed = useGameStore.getState().battleSpeed;
+                    let runningWeaponHp = weaponCarryHpRef.current ?? wStats.maxHp;
+                    let runningEnemyHp = eStats.maxHp;
+
+                    // Helper: check if this log is a terminal log (battle already decided)
+                    const isBattleEnd = (log: { message: string }) =>
+                        log.message.includes('完全破壊') || log.message.includes('強制撤退') ||
+                        log.message.includes('自壊') || log.message.includes('タイムアウト');
+
                     if (speed >= 100) {
                         // At 100x: only show summary (first + last log) to avoid DOM overload
                         if (result.logs.length > 0) store.addBattleLog(result.logs[0]);
                         if (result.logs.length > 1) store.addBattleLog(result.logs[result.logs.length - 1]);
                     } else if (speed >= 10) {
-                        // At 10x: stream all logs synchronously with abort check
+                        // At 10x: stream all logs with abort + HP0 safeguard
                         for (let li = 0; li < result.logs.length; li++) {
                             if (abortRef.current) break;
                             const log = result.logs[li];
                             store.addBattleLog(log);
                             if (log.damage) {
                                 if (log.actor === 'weapon') {
-                                    setEnemyHp(prev => Math.max(0, prev - log.damage!));
+                                    runningEnemyHp -= log.damage;
+                                    setEnemyHp(Math.max(0, runningEnemyHp));
                                 } else {
-                                    setWeaponHp(prev => Math.max(0, prev - log.damage!));
+                                    runningWeaponHp -= log.damage;
+                                    setWeaponHp(Math.max(0, runningWeaponHp));
                                 }
                             }
+                            // Safeguard: stop if HP0 or terminal log reached
+                            if (runningEnemyHp <= 0 || runningWeaponHp <= 0 || isBattleEnd(log)) break;
                         }
-                        // Single yield to let React render after each enemy
                         await new Promise(r => setTimeout(r, 10));
                     } else {
-                        // At 1x: stream with 150ms delay per log, abort-aware
+                        // At 1x: stream with 150ms delay per log, abort + HP0 safeguard
                         const delay = 150;
                         for (let li = 0; li < result.logs.length; li++) {
                             if (abortRef.current) {
-                                // Clear pending timer and stop
                                 if (battleTimerRef.current) {
                                     clearTimeout(battleTimerRef.current);
                                     battleTimerRef.current = null;
@@ -159,19 +170,23 @@ export function BattleStatsPanel() {
                                 break;
                             }
                             await new Promise(r => { battleTimerRef.current = window.setTimeout(r, delay) as unknown as number; });
-                            if (abortRef.current) break; // Check again after await
+                            if (abortRef.current) break;
                             const log = result.logs[li];
                             store.addBattleLog(log);
 
                             if (log.damage) {
                                 if (log.actor === 'weapon') {
-                                    setEnemyHp(prev => Math.max(0, prev - log.damage!));
+                                    runningEnemyHp -= log.damage;
+                                    setEnemyHp(Math.max(0, runningEnemyHp));
                                 } else {
-                                    setWeaponHp(prev => Math.max(0, prev - log.damage!));
+                                    runningWeaponHp -= log.damage;
+                                    setWeaponHp(Math.max(0, runningWeaponHp));
                                 }
                             }
+                            // Safeguard: stop if HP0 or terminal log reached
+                            if (runningEnemyHp <= 0 || runningWeaponHp <= 0 || isBattleEnd(log)) break;
                         }
-                        battleTimerRef.current = null; // Clear ref after loop completes
+                        battleTimerRef.current = null;
                     }
 
                     // ── Final HP correction: ensure exact match after log animation ──
