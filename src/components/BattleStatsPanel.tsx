@@ -130,8 +130,6 @@ export function BattleStatsPanel() {
                         // At 100x: only show summary (first + last log) to avoid DOM overload
                         if (result.logs.length > 0) store.addBattleLog(result.logs[0]);
                         if (result.logs.length > 1) store.addBattleLog(result.logs[result.logs.length - 1]);
-                        setWeaponHp(result.weaponHpRemaining);
-                        setEnemyHp(result.enemyHpRemaining);
                     } else if (speed >= 10) {
                         // At 10x: stream with minimal delay, skip defend-only logs
                         for (const log of result.logs) {
@@ -162,6 +160,10 @@ export function BattleStatsPanel() {
                         }
                     }
 
+                    // ── Final HP correction: ensure exact match after log animation ──
+                    setWeaponHp(result.weaponHpRemaining);
+                    setEnemyHp(result.enemyHpRemaining);
+
                     // Record results
                     if (result.won) {
                         wKills++;
@@ -187,7 +189,7 @@ export function BattleStatsPanel() {
                         // Update mastery for equipped weapon
                         store.updateMastery(equippedWeapon.id, fit);
 
-                        // Loot drop: 40% normal, 80% boss
+                        // ── Loot drop with rank-based visual logs ──
                         const lootChance = species === 'boss' ? 0.80 : 0.40;
                         if (Math.random() < lootChance) {
                             const lootItem = {
@@ -199,6 +201,30 @@ export function BattleStatsPanel() {
                             store.addItem(lootItem);
                             totalGenesCollected++;
                             if (fit > totalBestFitness) totalBestFitness = fit;
+
+                            // Rank-based drop log with visual effects
+                            const rating = ItemDecoder.getRating(lootItem);
+                            const estimatedEP = 10; // base decompose value
+                            let dropMsg: string;
+                            if (rating === 'SS') {
+                                dropMsg = `\n🔶 [!!! 極稀少信号 !!!] 伝説的個体のパーツを検知！\n>> 報告: 敵個体より 【遺伝子チップ: ランクSS】 を回収。推定EP: ${estimatedEP}`;
+                            } else if (rating === 'S') {
+                                dropMsg = `★ 報告: 敵個体より 【遺伝子チップ: ランク${rating}】 の回収に成功。推定EP: ${estimatedEP}`;
+                            } else if (rating === 'A') {
+                                dropMsg = `◆ 報告: 敵個体より 【遺伝子チップ: ランク${rating}】 の回収に成功。推定EP: ${estimatedEP}`;
+                            } else {
+                                dropMsg = `>> 報告: 敵個体より 【遺伝子チップ: ランク${rating}】 を回収。推定EP: ${estimatedEP}`;
+                            }
+                            store.addBattleLog({
+                                time: 0, actor: 'weapon', action: 'attack',
+                                message: dropMsg,
+                            });
+                        } else {
+                            // No gene drop
+                            store.addBattleLog({
+                                time: 0, actor: 'weapon', action: 'defend',
+                                message: `>> 警告: ドロップ反応なし。資材のみ回収します。`,
+                            });
                         }
 
                         // Material shard drop: 80% for boss, 15% normally

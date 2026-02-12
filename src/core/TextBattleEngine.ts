@@ -31,6 +31,7 @@ export interface BattleResult {
     adaptationScore: number;  // how well you bypassed resistances
     weaponHpRemaining: number;
     enemyHpRemaining: number;
+    endReason: 'enemy_killed' | 'weapon_destroyed' | 'weapon_selfkill' | 'timeout';
 }
 
 interface Combatant {
@@ -253,6 +254,18 @@ export class TextBattleEngine {
             totalAttempedDamage += totalDamageDealt;
         }
 
+        // Determine end reason
+        let endReason: BattleResult['endReason'];
+        if (enemy.currentHp <= 0) {
+            endReason = 'enemy_killed';
+        } else if (weapon.currentHp <= 0) {
+            // Check if self-kill (decay/self-destruct)
+            const lastLog = logs[logs.length - 1];
+            endReason = lastLog?.message.includes('自壊') ? 'weapon_selfkill' : 'weapon_destroyed';
+        } else {
+            endReason = 'timeout';
+        }
+
         const won = enemy.currentHp <= 0 && weapon.currentHp > 0;
         const killTime = won ? time : Infinity;
         const damageRatio = totalDamageTaken > 0 ? totalDamageDealt / totalDamageTaken : totalDamageDealt > 0 ? 999 : 1;
@@ -263,21 +276,7 @@ export class TextBattleEngine {
             : 0.5;
 
         // End log — only for timeout (HP0 cases already logged inline)
-        if (won && !logs.some(l => l.message.includes('撃破'))) {
-            logs.push({
-                time,
-                actor: 'weapon',
-                action: 'attack',
-                message: `🏆 ${weapon.name}の勝利！ キルタイム: ${killTime.toFixed(1)}秒`,
-            });
-        } else if (weapon.currentHp <= 0 && !logs.some(l => l.message.includes('破壊された') || l.message.includes('自壊した'))) {
-            logs.push({
-                time,
-                actor: 'enemy',
-                action: 'attack',
-                message: `💀 ${weapon.name}は破壊された...`,
-            });
-        } else if (time >= maxTime && weapon.currentHp > 0 && enemy.currentHp > 0) {
+        if (endReason === 'timeout') {
             logs.push({
                 time,
                 actor: 'weapon',
@@ -296,6 +295,7 @@ export class TextBattleEngine {
             adaptationScore,
             weaponHpRemaining: Math.max(0, weapon.currentHp),
             enemyHpRemaining: Math.max(0, enemy.currentHp),
+            endReason,
         };
     }
 
