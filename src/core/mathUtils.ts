@@ -104,3 +104,50 @@ export function diminishingReturns(baseValue: number, generation: number): numbe
     const decay = 1 + Math.log(Math.max(1, generation)) * 0.25;
     return baseValue / decay;
 }
+
+// ========== MASTERY COMBAT BUFFS ==========
+
+/**
+ * Synchro Boost: damage & defense multiplier from mastery.
+ * mastery 0 → ×1.0, mastery 100 → ×1.1 (MAX +10%)
+ */
+export function masterySynchroBoost(mastery: number): number {
+    return 1 + Math.min(mastery, 100) / 1000;
+}
+
+/**
+ * Critical rate bonus from mastery.
+ * +1% per 10 mastery → MAX +10% at mastery 100.
+ */
+export function masteryCritBonus(mastery: number): number {
+    return Math.floor(Math.min(mastery, 100) / 10) * 0.01;
+}
+
+/**
+ * Whether this mastery level qualifies as "mastered" (golden name).
+ */
+export function isMasteryMax(mastery: number): boolean {
+    return mastery >= 100;
+}
+
+// ========== STAGE-BASED GENOME QUALITY ==========
+
+/**
+ * Create a genome with quality scaled to stage level.
+ * Low stages produce weak genomes, high stages produce strong ones.
+ *
+ * Stage 1-5:  avg ~0.15-0.30 (D rank center)
+ * Stage 10:   avg ~0.35-0.45 (C-B rank)
+ * Stage 25:   avg ~0.50-0.65 (B-A rank)
+ * Stage 50:   avg ~0.70-0.90 (S rank center)
+ *
+ * Formula: value = random * (0.3 + stage/100) + (stage/200), clamped [0.01, 0.99]
+ */
+export function createStageGenome(stage: number, geneCount: number = 10): number[] {
+    const range = Math.min(0.3 + stage / 100, 0.95);
+    const floor = Math.min(stage / 200, 0.50);
+    return Array.from({ length: geneCount }, () => {
+        const raw = Math.random() * range + floor;
+        return Math.max(0.01, Math.min(0.99, raw));
+    });
+}

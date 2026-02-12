@@ -180,14 +180,38 @@ export class GeneticEngine {
       traits: childTraits,
     };
 
+    // === Mastery Breeding Bonus ===
+    // If average parent mastery >= 80: reduce disease chance by 20%, boost positive traits +5%
+    const avgMastery = ((parentA.mastery ?? 0) + (parentB.mastery ?? 0)) / 2;
+    const isMasteryBreed = avgMastery >= 80;
+
     // Genetic fatigue: higher parent breedCount → exponentially higher disease chance
     if (!child.geneticDisease) {
       const maxParentBreeds = Math.max(parentA.breedCount ?? 0, parentB.breedCount ?? 0);
-      const fatigueChance = Math.pow(maxParentBreeds * 0.12, 1.5);
+      let fatigueChance = Math.pow(maxParentBreeds * 0.12, 1.5);
+      // Mastery: reduce disease chance by 20%
+      if (isMasteryBreed) fatigueChance *= 0.8;
       if (maxParentBreeds > 0 && Math.random() < fatigueChance) {
         const diseases: GeneticDisease[] = ['fragile_genome', 'attack_decay', 'element_instability', 'slow_metabolism'];
         child.geneticDisease = diseases[Math.floor(Math.random() * diseases.length)];
       }
+    } else if (isMasteryBreed && Math.random() < 0.20) {
+      // 20% chance to cure inherited disease with high mastery parents
+      child.geneticDisease = null;
+    }
+
+    // Mastery: boost positive traits to higher rank (+5% upgrade chance per trait)
+    if (isMasteryBreed && child.traits) {
+      const rankUpgrade: Record<string, string> = {
+        'Common': 'Rare', 'Rare': 'Epic', 'Epic': 'Legendary',
+      };
+      child.traits = child.traits.map(t => {
+        const nextRank = rankUpgrade[t.rank];
+        if (nextRank && Math.random() < 0.05) {
+          return { ...t, rank: nextRank as typeof t.rank };
+        }
+        return t;
+      });
     }
 
     // Generate bloodline name (only for bred items, gen >= 2)

@@ -1,10 +1,5 @@
-/**
- * Chimera Gear: Text Edition — Adaptive Enemy Evolution
- * Enemies evolve counter-strategies based on player combat history
- */
-
 import { GeneticEngine, type Genome, type Item } from './GeneticEngine';
-import { clampGene, boostResistance } from './mathUtils';
+import { clampGene, boostResistance, createStageGenome } from './mathUtils';
 
 export interface CounterReport {
     stage: number;
@@ -50,12 +45,17 @@ export class EnemyEvolution {
         return best;
     }
 
-    /** Spawn a new enemy genome, evolved from history, with speciation */
+    /**
+     * Spawn a new enemy genome — TWO-TIER SYSTEM:
+     * Tier 1: Stage-based base stats (createStageGenome sets quality floor)
+     * Tier 2: Adaptive counter-traits from player history (resistance boosts)
+     */
     spawnEnemy(stageLevel: number): { genome: Genome; generation: number; species: EnemySpecies } {
         let baseGenome: Genome;
         let gen = 1;
 
         if (this.bestAncestors.length >= 2) {
+            // Tier 1: Evolved from best ancestors + stage quality floor
             this.generationCount = Math.max(...this.bestAncestors.map(p => p.generation)) + 1;
             gen = this.generationCount;
 
@@ -64,10 +64,17 @@ export class EnemyEvolution {
 
             let child = GeneticEngine.crossover(p1.genome, p2.genome);
             child = GeneticEngine.mutate(child, 0.12 + stageLevel * 0.01);
+
+            // Apply stage floor: pull weak genes up to stage minimum
+            const stageFloor = createStageGenome(stageLevel);
+            child = child.map((g, i) => Math.max(g, stageFloor[i] * 0.7));
+
+            // Tier 2: Adaptive counter-resistance from player history
             child = this.applyAdaptiveResistance(child);
             baseGenome = child;
         } else {
-            baseGenome = GeneticEngine.createRandomGenome();
+            // No history: pure stage-based genome
+            baseGenome = createStageGenome(stageLevel);
         }
 
         // Speciation roll
@@ -77,27 +84,26 @@ export class EnemyEvolution {
         if (roll < 0.3) {
             // TANK: high HP, low attack, high defense
             species = 'tank';
-            baseGenome[4] = clampGene(baseGenome[4] * 1.8); // HP ×1.8
-            baseGenome[0] = baseGenome[0] * 0.5;                 // ATK ×0.5
-            baseGenome[6] = clampGene(baseGenome[6] + 0.3); // Defense instinct ↑
-            baseGenome[8] = clampGene(baseGenome[8] + 0.1); // Fire resist ↑
-            baseGenome[9] = clampGene(baseGenome[9] + 0.1); // Ice resist ↑
+            baseGenome[4] = clampGene(baseGenome[4] * 1.8);
+            baseGenome[0] = baseGenome[0] * 0.5;
+            baseGenome[6] = clampGene(baseGenome[6] + 0.3);
+            baseGenome[8] = clampGene(baseGenome[8] + 0.1);
+            baseGenome[9] = clampGene(baseGenome[9] + 0.1);
         } else if (roll < 0.5) {
             // ATTACKER: low HP, high attack, fast
             species = 'attacker';
-            baseGenome[4] = baseGenome[4] * 0.5;                 // HP ×0.5
-            baseGenome[0] = clampGene(baseGenome[0] * 2.0); // ATK ×2.0
-            baseGenome[1] = clampGene(baseGenome[1] + 0.2); // Speed ↑
-            baseGenome[5] = clampGene(baseGenome[5] + 0.3); // Aggression ↑
+            baseGenome[4] = baseGenome[4] * 0.5;
+            baseGenome[0] = clampGene(baseGenome[0] * 2.0);
+            baseGenome[1] = clampGene(baseGenome[1] + 0.2);
+            baseGenome[5] = clampGene(baseGenome[5] + 0.3);
         }
 
         return { genome: baseGenome, generation: gen, species };
     }
 
     /** Spawn a boss enemy — appears every 10 stages.
-     *  Boss has massive HP, boosted ATK, and extreme resistance to player's dominant element. */
+     *  TWO-TIER: Stage-scaled base + extreme counter-resistance. */
     spawnBoss(stageLevel: number): { genome: Genome; generation: number; species: EnemySpecies } {
-        // Start from evolved base if we have history
         let baseGenome: Genome;
         let gen = 1;
 
@@ -107,24 +113,28 @@ export class EnemyEvolution {
             const p1 = GeneticEngine.selectParent(this.bestAncestors);
             const p2 = GeneticEngine.selectParent(this.bestAncestors);
             let child = GeneticEngine.crossover(p1.genome, p2.genome);
-            child = GeneticEngine.mutate(child, 0.05); // Low mutation — boss is refined
+            child = GeneticEngine.mutate(child, 0.05);
+
+            // Stage quality floor
+            const stageFloor = createStageGenome(stageLevel);
+            child = child.map((g, i) => Math.max(g, stageFloor[i] * 0.8));
             baseGenome = child;
         } else {
-            baseGenome = GeneticEngine.createRandomGenome();
+            baseGenome = createStageGenome(stageLevel);
         }
 
         // Boss stats: HP ×2.5, ATK ×1.5, high defense
-        baseGenome[4] = clampGene(baseGenome[4] * 2.5);  // HP
-        baseGenome[0] = clampGene(baseGenome[0] * 1.5);  // ATK
-        baseGenome[6] = clampGene(baseGenome[6] + 0.3);  // Defense instinct
+        baseGenome[4] = clampGene(baseGenome[4] * 2.5);
+        baseGenome[0] = clampGene(baseGenome[0] * 1.5);
+        baseGenome[6] = clampGene(baseGenome[6] + 0.3);
 
-        // Extreme resistance against player's dominant element (+0.4)
+        // Tier 2: Extreme resistance against player's dominant element (+0.4)
         const dominant = this.getDominantPlayerElement();
         if (dominant) {
             baseGenome = boostResistance(baseGenome, dominant as 'Fire' | 'Ice' | 'Lightning', 0.4);
         }
 
-        // Scale with stage level
+        // Additional stage scaling
         const stageBoost = Math.min(0.3, stageLevel * 0.01);
         baseGenome[4] = clampGene(baseGenome[4] + stageBoost);
 

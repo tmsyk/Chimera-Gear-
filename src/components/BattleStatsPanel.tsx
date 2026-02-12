@@ -115,6 +115,7 @@ export function BattleStatsPanel() {
                         30,
                         equippedWeapon.traits ?? [],
                         weaponCarryHpRef.current,
+                        equippedWeapon.mastery ?? 0,
                     );
 
                     // Record DPS for analytics
@@ -408,7 +409,20 @@ export function BattleStatsPanel() {
                 <div className="stats-section">
                     <div className="stats-section-title">🛡️ Weapon Status</div>
                     <div className="hp-bar-container">
-                        <div style={{ fontSize: 10, color: 'var(--text-dim)', marginBottom: 4 }}>自機HP</div>
+                        <div style={{ fontSize: 10, color: 'var(--text-dim)', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+                            {(equippedWeapon?.mastery ?? 0) >= 100 ? (
+                                <span style={{
+                                    color: '#ffd700',
+                                    fontWeight: 700,
+                                    textShadow: '0 0 6px rgba(255,215,0,0.6)',
+                                    letterSpacing: '0.05em',
+                                }}>
+                                    ✦ 自機HP ✦ <span style={{ fontSize: 9, opacity: 0.8 }}>熟練の証</span>
+                                </span>
+                            ) : (
+                                <span>自機HP</span>
+                            )}
+                        </div>
                         <div className="hp-bar">
                             <div className={`hp-bar-fill ${hpClass}`} style={{ width: `${hpPercent}%` }} />
                             <span className="hp-bar-text">{formatStat(weaponHp)} / {formatStat(weaponMaxHp)}</span>

@@ -7,6 +7,7 @@ import { ItemDecoder, type CombatStats, type ActionType, type ElementType } from
 import type { Genome } from './GeneticEngine';
 import type { TraitInstance } from './TraitSystem';
 import { applyTraits, getTraitCombatEffects, getTraitDef } from './TraitSystem';
+import { masterySynchroBoost, masteryCritBonus, isMasteryMax } from './mathUtils';
 
 export interface BattleLogEntry {
     time: number;          // seconds elapsed
@@ -60,9 +61,20 @@ export class TextBattleEngine {
         maxTime: number = 30,
         weaponTraits: TraitInstance[] = [],
         initialWeaponHp: number | null = null,
+        weaponMastery: number = 0,
     ): BattleResult {
         let wStats = ItemDecoder.decode(weaponGenome, 80 + stageLevel * 20);
         const eStats = ItemDecoder.decode(enemyGenome, 60 + stageLevel * 15);
+
+        // Apply mastery synchro boost to weapon stats
+        const synchroMult = masterySynchroBoost(weaponMastery);
+        wStats = {
+            ...wStats,
+            attack: wStats.attack * synchroMult,
+            defense: wStats.defense * synchroMult,
+        };
+        const masteryCrit = masteryCritBonus(weaponMastery);
+        const isGolden = isMasteryMax(weaponMastery);
 
         // Apply traits to weapon stats
         const traitResult = applyTraits(wStats, weaponTraits);
@@ -70,8 +82,9 @@ export class TextBattleEngine {
         const traitEffects = getTraitCombatEffects(weaponTraits);
         const activeSynergies = traitResult.activeSynergies;
 
+        const weaponName = isGolden ? '✦キメラ兵器✦' : 'キメラ兵器';
         const weapon: Combatant = {
-            name: 'キメラ兵器',
+            name: weaponName,
             stats: wStats,
             currentHp: initialWeaponHp !== null ? Math.min(initialWeaponHp, wStats.maxHp) : wStats.maxHp,
             cooldown: 0,
@@ -145,7 +158,7 @@ export class TextBattleEngine {
             weapon.cooldown -= tickInterval;
             if (weapon.cooldown <= 0) {
                 const action = this.selectAction(weapon, enemy, weaponGenome);
-                const logEntry = this.executeAction(weapon, enemy, action, time, weaponGenome);
+                const logEntry = this.executeAction(weapon, enemy, action, time, weaponGenome, masteryCrit);
                 if (logEntry) {
                     logs.push(logEntry);
                     if (logEntry.damage && logEntry.actor === 'weapon') {
@@ -322,7 +335,8 @@ export class TextBattleEngine {
         target: Combatant,
         action: ActionType,
         time: number,
-        genome: Genome
+        genome: Genome,
+        critBonus: number = 0,
     ): BattleLogEntry | null {
         const timeStr = time.toFixed(1);
 
@@ -331,7 +345,7 @@ export class TextBattleEngine {
                 const baseDmg = actor.stats.attack;
                 const resist = this.getResistance(target, actor.stats.element);
                 const dmgAfterResist = baseDmg * (1 - resist * 0.8);
-                const isCrit = Math.random() < 0.1 + genome[5] * 0.1;
+                const isCrit = Math.random() < 0.1 + genome[5] * 0.1 + critBonus;
                 const finalDmg = Math.round((isCrit ? dmgAfterResist * 2 : dmgAfterResist) * 10) / 10;
 
                 target.currentHp -= finalDmg;
