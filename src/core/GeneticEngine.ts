@@ -49,16 +49,16 @@ export interface BattleAchievement {
  * (Lightning Resistance derived from 1 - avg(8,9) to force tradeoffs)
  */
 export const GENE_NAMES = [
-  '攻撃力',       // Attack Power
-  '攻撃速度',     // Attack Speed
-  '属性',         // Element
-  '特殊能力',     // Special
-  '耐久力',       // Max HP
-  '攻撃性',       // Aggression (AI)
-  '防衛本能',     // Defense Instinct (AI)
-  '戦術多様性',   // Tactical Variety (AI)
-  '火炎耐性',     // Fire Resist
-  '氷結耐性',     // Ice Resist
+  '⚔️攻撃力',       // Attack Power
+  '💨攻撃速度',     // Attack Speed
+  '🌀属性',         // Element
+  '⭐特殊能力',     // Special
+  '❤️耐久力',       // Max HP
+  '👹攻撃性',       // Aggression (AI)
+  '🛡️防衛本能',     // Defense Instinct (AI)
+  '🎲戦術多様性',   // Tactical Variety (AI)
+  '🔥火炎耐性',     // Fire Resist
+  '❄️氷結耐性',     // Ice Resist
 ];
 
 export const GENOME_LENGTH = 10;
