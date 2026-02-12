@@ -131,8 +131,10 @@ export function BattleStatsPanel() {
                         if (result.logs.length > 0) store.addBattleLog(result.logs[0]);
                         if (result.logs.length > 1) store.addBattleLog(result.logs[result.logs.length - 1]);
                     } else if (speed >= 10) {
-                        // At 10x: stream with minimal delay, skip defend-only logs
-                        for (const log of result.logs) {
+                        // At 10x: stream all logs synchronously with abort check
+                        for (let li = 0; li < result.logs.length; li++) {
+                            if (abortRef.current) break;
+                            const log = result.logs[li];
                             store.addBattleLog(log);
                             if (log.damage) {
                                 if (log.actor === 'weapon') {
@@ -145,9 +147,20 @@ export function BattleStatsPanel() {
                         // Single yield to let React render after each enemy
                         await new Promise(r => setTimeout(r, 10));
                     } else {
+                        // At 1x: stream with 150ms delay per log, abort-aware
                         const delay = 150;
-                        for (const log of result.logs) {
+                        for (let li = 0; li < result.logs.length; li++) {
+                            if (abortRef.current) {
+                                // Clear pending timer and stop
+                                if (battleTimerRef.current) {
+                                    clearTimeout(battleTimerRef.current);
+                                    battleTimerRef.current = null;
+                                }
+                                break;
+                            }
                             await new Promise(r => { battleTimerRef.current = window.setTimeout(r, delay) as unknown as number; });
+                            if (abortRef.current) break; // Check again after await
+                            const log = result.logs[li];
                             store.addBattleLog(log);
 
                             if (log.damage) {
@@ -158,6 +171,7 @@ export function BattleStatsPanel() {
                                 }
                             }
                         }
+                        battleTimerRef.current = null; // Clear ref after loop completes
                     }
 
                     // ── Final HP correction: ensure exact match after log animation ──

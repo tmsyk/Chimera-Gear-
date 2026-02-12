@@ -135,14 +135,14 @@ export class TextBattleEngine {
             if (enemy.currentHp <= 0) {
                 logs.push({
                     time, actor: 'weapon', action: 'attack',
-                    message: `🏆 ${weapon.name}が${enemy.name}を撃破！`,
+                    message: `🏆 >> ターゲットの完全破壊を確認。`,
                 });
                 return true;
             }
             if (weapon.currentHp <= 0) {
                 logs.push({
                     time, actor: 'weapon', action: 'defend',
-                    message: `💀 キメラ兵器は破壊された…`,
+                    message: `💀 >> 深刻な損傷。強制撤退します。`,
                 });
                 return true;
             }
