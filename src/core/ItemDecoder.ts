@@ -65,8 +65,8 @@ export class ItemDecoder {
         const iceResist = genome[9];
         const lightningResist = Math.max(0, 1.0 - (fireResist + iceResist) * 0.6);
 
-        // Defense from resistances
-        const defense = ((fireResist + iceResist + lightningResist) / 3) * 30;
+        // Defense from resistances (halved to avoid stacking with resist reduction)
+        const defense = ((fireResist + iceResist + lightningResist) / 3) * 15;
 
         // ═══ Element-specific stat bonuses ═══
         let finalAttack = attack;

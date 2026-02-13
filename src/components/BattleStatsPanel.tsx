@@ -166,7 +166,7 @@ export function BattleStatsPanel() {
                         equippedWeapon.genome,
                         enemyGenome,
                         currentStage,
-                        30,
+                        45,
                         equippedWeapon.traits ?? [],
                         weaponCarryHpRef.current,
                         equippedWeapon.mastery ?? 0,
@@ -212,6 +212,20 @@ export function BattleStatsPanel() {
                                     setWeaponHp(Math.max(0, runningWeaponHp));
                                 }
                             }
+                            // Track heals from defend actions
+                            if (log.action === 'defend' && log.message.includes('回復')) {
+                                const healMatch = log.message.match(/HP ([\d.]+) 回復/);
+                                if (healMatch) {
+                                    const heal = parseFloat(healMatch[1]);
+                                    if (log.actor === 'weapon') {
+                                        runningWeaponHp = Math.min(runningWeaponHp + heal, wStats.maxHp);
+                                        setWeaponHp(runningWeaponHp);
+                                    } else {
+                                        runningEnemyHp = Math.min(runningEnemyHp + heal, eStats.maxHp);
+                                        setEnemyHp(runningEnemyHp);
+                                    }
+                                }
+                            }
                             // Safeguard: stop if HP < 0.01 or terminal log reached
                             if (runningEnemyHp < 0.01 || runningWeaponHp < 0.01) {
                                 console.warn(`[Battle UI] 10x: HP safeguard triggered (wHP=${runningWeaponHp.toFixed(1)}, eHP=${runningEnemyHp.toFixed(1)}) at log ${li}/${result.logs.length}`);
@@ -247,6 +261,20 @@ export function BattleStatsPanel() {
                                 } else {
                                     runningWeaponHp -= log.damage;
                                     setWeaponHp(Math.max(0, runningWeaponHp));
+                                }
+                            }
+                            // Track heals from defend actions
+                            if (log.action === 'defend' && log.message.includes('回復')) {
+                                const healMatch = log.message.match(/HP ([\d.]+) 回復/);
+                                if (healMatch) {
+                                    const heal = parseFloat(healMatch[1]);
+                                    if (log.actor === 'weapon') {
+                                        runningWeaponHp = Math.min(runningWeaponHp + heal, wStats.maxHp);
+                                        setWeaponHp(runningWeaponHp);
+                                    } else {
+                                        runningEnemyHp = Math.min(runningEnemyHp + heal, eStats.maxHp);
+                                        setEnemyHp(runningEnemyHp);
+                                    }
                                 }
                             }
                             // Safeguard: stop if HP < 0.01 or terminal log reached

@@ -415,7 +415,7 @@ export class TextBattleEngine {
             }
 
             case 'defend': {
-                const healAmount = Math.round(actor.stats.maxHp * 0.10 * 10) / 10;
+                const healAmount = Math.round(actor.stats.maxHp * 0.05 * 10) / 10;
                 actor.currentHp = Math.min(actor.stats.maxHp, actor.currentHp + healAmount);
 
                 return {
