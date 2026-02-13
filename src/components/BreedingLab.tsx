@@ -20,7 +20,8 @@ function GeneCard({ item, selected, onClick, isEquipped, onCrystallize, onEquip,
     onEquip?: (item: Item) => void;
     onDecompose?: (item: Item) => void;
 }) {
-    const stats = ItemDecoder.decode(item.genome);
+    const currentStage = useGameStore.getState().stage;
+    const stats = ItemDecoder.decode(item.genome, ItemDecoder.getWeaponStageBase(currentStage));
     const rating = ItemDecoder.getRating(item);
     const mastery = item.mastery ?? 0;
     const breedCount = item.breedCount ?? 0;
@@ -59,10 +60,10 @@ function GeneCard({ item, selected, onClick, isEquipped, onCrystallize, onEquip,
             </div>
             <div className="gene-bars">
                 {item.genome.map((val, i) => {
-                    // Squared display: C/D ~9-25%, S/SS ~64-90%
+                    // Cube display: D ~1-3%, C ~5-12%, B ~20-40%, A ~50-65%, S ~70-85%, SS 90%+
                     const displayWidth = i >= 8
-                        ? Math.max(val * val * 100, val > 0.01 ? 5 : 0) // Resistance: min 5% if non-zero
-                        : val * val * 100;
+                        ? Math.max(val * val * val * 100, val > 0.01 ? 5 : 0) // Resistance: min 5% if non-zero
+                        : val * val * val * 100;
                     return (
                         <div key={i} className="gene-bar-row">
                             <span className="gene-bar-label">{GENE_NAMES[i]}</span>
@@ -81,7 +82,7 @@ function GeneCard({ item, selected, onClick, isEquipped, onCrystallize, onEquip,
                 {/* Lightning resistance — derived value */}
                 {(() => {
                     const lrVal = stats.lightningResist;
-                    const lrWidth = Math.max(lrVal * lrVal * 100, lrVal > 0.01 ? 5 : 0);
+                    const lrWidth = Math.max(lrVal * lrVal * lrVal * 100, lrVal > 0.01 ? 5 : 0);
                     return (
                         <div className="gene-bar-row">
                             <span className="gene-bar-label">⚡雷耐性</span>
