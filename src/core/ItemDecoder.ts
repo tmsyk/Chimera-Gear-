@@ -1,5 +1,7 @@
 /**
  * Chimera Gear: Text Edition — Genome → Combat Stats Decoder
+ *
+ * stageBase計算を一元管理: 武器=60+stage*10, 敵=30+stage*4
  */
 
 import type { Item, Genome } from './GeneticEngine';
@@ -46,8 +48,8 @@ export class ItemDecoder {
         else if (genome[3] >= 0.75) special = 'homing';
         else if (genome[3] >= 0.6) special = 'piercing';
 
-        // [4] Max HP (+20% base survival buff)
-        const maxHp = 72 + genome[4] * 528;
+        // [4] Max HP
+        const maxHp = 50 + genome[4] * 350;
 
         // [5,6,7] AI Personality — normalize to weights
         const rawAggr = genome[5];
@@ -166,5 +168,17 @@ export class ItemDecoder {
         } catch {
             return null;
         }
+    }
+
+    // ── Stage-Base Scaling (single source of truth) ──
+
+    /** Weapon stageBase: gentler scaling so D/C rank can progress */
+    static getWeaponStageBase(stage: number): number {
+        return 60 + stage * 10;
+    }
+
+    /** Enemy stageBase: much lower than weapon to give player clear advantage */
+    static getEnemyStageBase(stage: number): number {
+        return 30 + stage * 4;
     }
 }

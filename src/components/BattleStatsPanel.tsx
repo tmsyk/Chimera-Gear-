@@ -114,7 +114,7 @@ export function BattleStatsPanel() {
 
             // Auto-continue through all waves in one go
             while (currentWave <= currentMaxWaves) {
-                const enemiesInWave = 3 + Math.floor(currentStage * 0.7) + (currentWave - 1);
+                const enemiesInWave = 2 + Math.floor(currentStage * 0.2) + (currentWave - 1);
                 let wKills = 0;
 
                 for (let i = 0; i < enemiesInWave; i++) {
@@ -134,8 +134,8 @@ export function BattleStatsPanel() {
                     const bossName = (spawnResult as { bossName?: string }).bossName;
                     const bossTitle = (spawnResult as { bossTitle?: string }).bossTitle;
                     setCurrentSpecies(species);
-                    const stageBase = 80 + currentStage * 15;
-                    const enemyBase = 60 + currentStage * 10;
+                    const stageBase = ItemDecoder.getWeaponStageBase(currentStage);
+                    const enemyBase = ItemDecoder.getEnemyStageBase(currentStage);
                     const wStats = ItemDecoder.decode(equippedWeapon.genome, stageBase);
                     const eStats = ItemDecoder.decode(enemyGenome, enemyBase);
 
@@ -430,7 +430,7 @@ export function BattleStatsPanel() {
                 // Wave complete
                 if (currentWave < currentMaxWaves) {
                     // Wave clear HP recovery: 40% of maxHP
-                    const wStats = ItemDecoder.decode(equippedWeapon.genome, 80 + currentStage * 15);
+                    const wStats = ItemDecoder.decode(equippedWeapon.genome, ItemDecoder.getWeaponStageBase(currentStage));
                     const currentHp = weaponCarryHpRef.current ?? wStats.maxHp;
                     const healAmount = Math.floor(wStats.maxHp * 0.40);
                     const newHp = Math.min(wStats.maxHp, currentHp + healAmount);
@@ -529,7 +529,7 @@ export function BattleStatsPanel() {
     const hpClass = hpPercent > 60 ? 'high' : hpPercent > 30 ? 'mid' : 'low';
     const ehpClass = enemyHpPercent > 60 ? 'high' : enemyHpPercent > 30 ? 'mid' : 'low';
 
-    const weaponStats = equippedWeapon ? ItemDecoder.decode(equippedWeapon.genome, 80 + stage * 20) : null;
+    const weaponStats = equippedWeapon ? ItemDecoder.decode(equippedWeapon.genome, ItemDecoder.getWeaponStageBase(stage)) : null;
 
     // Analytics computed values
     const avgDps = store.dpsHistory.length > 0

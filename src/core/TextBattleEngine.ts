@@ -60,13 +60,13 @@ export class TextBattleEngine {
         weaponGenome: Genome,
         enemyGenome: Genome,
         stageLevel: number = 1,
-        maxTime: number = 30,
+        maxTime: number = 45,
         weaponTraits: TraitInstance[] = [],
         initialWeaponHp: number | null = null,
         weaponMastery: number = 0,
     ): BattleResult {
-        let wStats = ItemDecoder.decode(weaponGenome, 80 + stageLevel * 20);
-        const eStats = ItemDecoder.decode(enemyGenome, 60 + stageLevel * 15);
+        let wStats = ItemDecoder.decode(weaponGenome, ItemDecoder.getWeaponStageBase(stageLevel));
+        const eStats = ItemDecoder.decode(enemyGenome, ItemDecoder.getEnemyStageBase(stageLevel));
 
         // Apply mastery synchro boost to weapon stats
         const synchroMult = masterySynchroBoost(weaponMastery);
@@ -358,8 +358,11 @@ export class TextBattleEngine {
                 const baseDmg = actor.stats.attack;
                 const resist = this.getResistance(target, actor.stats.element);
                 const dmgAfterResist = baseDmg * (1 - resist * 0.8);
+                // Defense reduction: 100/(100+def) scaling
+                const defReduction = 100 / (100 + target.stats.defense);
+                const dmgAfterDef = dmgAfterResist * defReduction;
                 const isCrit = Math.random() < 0.1 + genome[5] * 0.1 + critBonus;
-                const finalDmg = Math.round((isCrit ? dmgAfterResist * 2 : dmgAfterResist) * 10) / 10;
+                const finalDmg = Math.round((isCrit ? dmgAfterDef * 2 : dmgAfterDef) * 10) / 10;
 
                 target.currentHp -= finalDmg;
 
@@ -383,7 +386,8 @@ export class TextBattleEngine {
                     const skillElement = skill.element || actor.stats.element;
                     const resist = this.getResistance(target, skillElement);
                     const rawDmg = actor.stats.attack * skill.damageMultiplier;
-                    const finalDmg = Math.round(rawDmg * (1 - resist * 0.8) * 10) / 10;
+                    const defRed = 100 / (100 + target.stats.defense);
+                    const finalDmg = Math.round(rawDmg * (1 - resist * 0.8) * defRed * 10) / 10;
 
                     target.currentHp -= finalDmg;
 
@@ -398,7 +402,8 @@ export class TextBattleEngine {
                 // Normal skill — slightly stronger attack with element
                 const skillDmg = actor.stats.attack * 1.3;
                 const resist = this.getResistance(target, actor.stats.element);
-                const finalDmg = Math.round(skillDmg * (1 - resist * 0.8) * 10) / 10;
+                const defRed2 = 100 / (100 + target.stats.defense);
+                const finalDmg = Math.round(skillDmg * (1 - resist * 0.8) * defRed2 * 10) / 10;
                 target.currentHp -= finalDmg;
 
                 const elemTag2 = this.getElementTag(actor.stats.element);
@@ -410,7 +415,7 @@ export class TextBattleEngine {
             }
 
             case 'defend': {
-                const healAmount = Math.round(actor.stats.maxHp * 0.05 * 10) / 10;
+                const healAmount = Math.round(actor.stats.maxHp * 0.10 * 10) / 10;
                 actor.currentHp = Math.min(actor.stats.maxHp, actor.currentHp + healAmount);
 
                 return {
