@@ -226,9 +226,9 @@ export function BattleStatsPanel() {
                                     }
                                 }
                             }
-                            // Safeguard: stop if HP < 0.01 or terminal log reached
-                            if (runningEnemyHp < 0.01 || runningWeaponHp < 0.01) {
-                                console.warn(`[Battle UI] 10x: HP safeguard triggered (wHP=${runningWeaponHp.toFixed(1)}, eHP=${runningEnemyHp.toFixed(1)}) at log ${li}/${result.logs.length}`);
+                            // Safeguard: stop only if WEAPON HP < 0.01 (enemy overkill is normal)
+                            if (runningWeaponHp < 0.01) {
+                                console.warn(`[Battle UI] 10x: weapon HP safeguard (wHP=${runningWeaponHp.toFixed(1)}) at log ${li}/${result.logs.length}`);
                                 break;
                             }
                             if (isBattleEnd(log)) {
@@ -277,9 +277,9 @@ export function BattleStatsPanel() {
                                     }
                                 }
                             }
-                            // Safeguard: stop if HP < 0.01 or terminal log reached
-                            if (runningEnemyHp < 0.01 || runningWeaponHp < 0.01) {
-                                console.warn(`[Battle UI] 1x: HP safeguard triggered (wHP=${runningWeaponHp.toFixed(1)}, eHP=${runningEnemyHp.toFixed(1)}) at log ${li}/${result.logs.length}`);
+                            // Safeguard: stop only if WEAPON HP < 0.01 (enemy overkill is normal)
+                            if (runningWeaponHp < 0.01) {
+                                console.warn(`[Battle UI] 1x: weapon HP safeguard (wHP=${runningWeaponHp.toFixed(1)}) at log ${li}/${result.logs.length}`);
                                 break;
                             }
                             if (isBattleEnd(log)) {
