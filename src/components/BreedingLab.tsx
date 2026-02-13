@@ -139,9 +139,9 @@ function GeneCard({ item, selected, onClick, isEquipped, onCrystallize, onEquip,
                 </button>
             )}
             {/* Crystallize button for maxed items — show estimated EP yield */}
-            {atLimit && onCrystallize && (() => {
+            {(atLimit || mastery >= 100) && onCrystallize && (() => {
                 const genomeQuality = item.genome.reduce((a, b) => a + b, 0) / 10;
-                const estEP = Math.floor(50 + item.generation * 10 + genomeQuality * 40 + mastery * 0.5 + breedCount * 15);
+                const estEP = Math.floor(75 + item.generation * 15 + genomeQuality * 60 + mastery * 0.75 + breedCount * 22);
                 return (
                     <button
                         onClick={(e) => { e.stopPropagation(); onCrystallize(item); }}
@@ -363,7 +363,7 @@ export function BreedingLab() {
     const canBreed = parentA && parentB && geneEnergy >= totalCost && hasMaterial;
     const parentAMastery = parentA?.mastery ?? 0;
 
-    const exhaustedCount = inventory.filter(i => (i.breedCount ?? 0) >= MAX_BREED_COUNT && i.id !== equippedWeapon?.id).length;
+    const exhaustedCount = inventory.filter(i => ((i.breedCount ?? 0) >= MAX_BREED_COUNT || (i.mastery ?? 0) >= 100) && i.id !== equippedWeapon?.id).length;
 
     const handleBulkCrystallize = () => {
         const crystals = bulkCrystallize();

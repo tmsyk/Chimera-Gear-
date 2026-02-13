@@ -253,7 +253,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
         const state = get();
         const MAX_BREED = 3;
         const exhausted = state.inventory.filter(i =>
-            (i.breedCount ?? 0) >= MAX_BREED &&
+            ((i.breedCount ?? 0) >= MAX_BREED || (i.mastery ?? 0) >= 100) &&
             i.id !== state.equippedWeapon?.id &&
             !i.locked
         );
