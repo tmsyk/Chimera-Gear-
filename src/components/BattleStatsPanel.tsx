@@ -378,6 +378,20 @@ export function BattleStatsPanel() {
                         if (speed < 100) {
                             await new Promise(r => setTimeout(r, speed >= 10 ? 200 : 800));
                         }
+                    } else if (result.endReason === 'timeout') {
+                        // Timeout — weapon still alive, carry HP forward and move to next enemy
+                        store.addBattleLog({
+                            time: 0, actor: 'weapon', action: 'defend',
+                            message: `⏱️ タイムアウト — 決着つかず。次の敵へ移行。`,
+                        });
+
+                        store.setBattleResult(result);
+                        weaponCarryHpRef.current = result.weaponHpRemaining;
+
+                        const speed = useGameStore.getState().battleSpeed;
+                        if (speed < 100) {
+                            await new Promise(r => setTimeout(r, speed >= 10 ? 200 : 500));
+                        }
                     } else {
                         // HP=0 → weapon destroyed, abort stage
                         // The engine's checkDeath already logged the destruction message
