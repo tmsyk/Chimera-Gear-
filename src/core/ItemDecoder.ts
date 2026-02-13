@@ -46,8 +46,8 @@ export class ItemDecoder {
         else if (genome[3] >= 0.75) special = 'homing';
         else if (genome[3] >= 0.6) special = 'piercing';
 
-        // [4] Max HP
-        const maxHp = 60 + genome[4] * 440;
+        // [4] Max HP (+20% base survival buff)
+        const maxHp = 72 + genome[4] * 528;
 
         // [5,6,7] AI Personality — normalize to weights
         const rawAggr = genome[5];
@@ -66,13 +66,35 @@ export class ItemDecoder {
         // Defense from resistances
         const defense = ((fireResist + iceResist + lightningResist) / 3) * 30;
 
+        // ═══ Element-specific stat bonuses ═══
+        let finalAttack = attack;
+        let finalMaxHp = maxHp;
+        let finalDefense = defense;
+        let finalAttackSpeed = attackSpeed;
+
+        switch (element) {
+            case 'Fire':
+                // 火属性: 攻撃力 +20%
+                finalAttack *= 1.20;
+                break;
+            case 'Ice':
+                // 氷属性: 耐久力 +20%, 防御力 +20%
+                finalMaxHp *= 1.20;
+                finalDefense *= 1.20;
+                break;
+            case 'Lightning':
+                // 雷属性: 攻撃速度 20% 高速化 (lower = faster)
+                finalAttackSpeed *= 0.80;
+                break;
+        }
+
         return {
-            attack,
-            attackSpeed,
+            attack: finalAttack,
+            attackSpeed: finalAttackSpeed,
             element,
             special,
-            maxHp,
-            defense,
+            maxHp: finalMaxHp,
+            defense: finalDefense,
             aggressionWeight,
             defenseWeight,
             tacticalWeight,
@@ -85,14 +107,25 @@ export class ItemDecoder {
     static getRating(item: Item): string {
         const stats = this.decode(item.genome);
         const dps = stats.attack / stats.attackSpeed;
-        if (dps > 500) return 'S';
-        if (dps > 300) return 'A';
-        if (dps > 150) return 'B';
-        if (dps > 50) return 'C';
+        // Comprehensive score: DPS + defensive value + element synergy
+        const tankScore = (stats.maxHp / 500) * 50 + stats.defense * 2;
+        const score = dps + tankScore * 0.3;
+        if (score > 700) return 'SS';
+        if (score > 500) return 'S';
+        if (score > 300) return 'A';
+        if (score > 150) return 'B';
+        if (score > 50) return 'C';
         return 'D';
     }
 
-    static getElementLabel(elem: ElementType): string {
+    static getElementLabel(elem: ElementType, cleared: boolean = false): string {
+        if (cleared) {
+            switch (elem) {
+                case 'Fire': return '🥩 肉';
+                case 'Ice': return '🦴 骨';
+                case 'Lightning': return '🧠 脳';
+            }
+        }
         switch (elem) {
             case 'Fire': return '🔥 火炎';
             case 'Ice': return '❄️ 氷結';

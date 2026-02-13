@@ -14,7 +14,7 @@ import { DatabasePanel } from './components/DatabasePanel';
 import { TitleScreen } from './components/TitleScreen';
 
 function App() {
-  const { activeTab, setActiveTab, stage, inventory, geneEnergy, equippedWeapon, equipWeapon, addItem, toast, loadGame } = useGameStore();
+  const { activeTab, setActiveTab, stage, inventory, geneEnergy, equippedWeapon, equipWeapon, addItem, toast, loadGame, gameCleared, setGameCleared } = useGameStore();
   const [showTitle, setShowTitle] = useState(true);
   const [ready, setReady] = useState(false);
 
@@ -60,7 +60,7 @@ function App() {
 
   // TITLE SCREEN
   if (showTitle) {
-    return <TitleScreen onNewGame={handleNewGame} onContinue={handleContinue} />;
+    return <TitleScreen onNewGame={handleNewGame} onContinue={handleContinue} gameCleared={gameCleared} />;
   }
 
   return (
@@ -158,6 +158,38 @@ function App() {
           <span className="bottom-tab-label">Database</span>
         </button>
       </nav>
+
+      {/* Ending Overlay — Stage 100 clear */}
+      {gameCleared && (
+        <div
+          className="ending-overlay"
+          onClick={() => setGameCleared(false)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 9999,
+            background: '#000',
+            display: 'flex', flexDirection: 'column',
+            alignItems: 'center', justifyContent: 'center',
+            animation: 'endingFadeIn 3s ease forwards',
+            cursor: 'pointer',
+          }}
+        >
+          <div style={{
+            fontFamily: 'monospace', fontSize: 14, color: '#00e5ff',
+            textAlign: 'center', lineHeight: 2.4, letterSpacing: 3,
+            textShadow: '0 0 10px rgba(0,229,255,0.6)',
+            animation: 'endingTextIn 2s ease 2s both',
+          }}>
+            ALL DATA INTEGRATED.<br />
+            GOODBYE, MASTER.
+          </div>
+          <div style={{
+            marginTop: 40, fontSize: 10, color: 'rgba(255,255,255,0.3)',
+            animation: 'endingTextIn 1s ease 5s both',
+          }}>
+            クリックで閉じる
+          </div>
+        </div>
+      )}
 
       {/* Toast Notification */}
       {toast && (

@@ -19,6 +19,7 @@ export interface BattleLogEntry {
     isMutation?: boolean;  // special mutation event
     isEvade?: boolean;     // dodge/evasion event
     element?: ElementType;
+    storyEra?: 'hope' | 'awakening'; // story log color tag
 }
 
 export interface BattleResult {

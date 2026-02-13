@@ -1,6 +1,7 @@
 /**
  * TitleScreen — Chimera Gear opening screen
  * Shows NEW GAME / CONTINUE buttons
+ * Blood-stained variant after game clear
  */
 
 import { useEffect, useState } from 'react';
@@ -9,9 +10,10 @@ import { SaveManager } from '../core/SaveManager';
 interface TitleScreenProps {
     onNewGame: () => void;
     onContinue: () => void;
+    gameCleared?: boolean;
 }
 
-export function TitleScreen({ onNewGame, onContinue }: TitleScreenProps) {
+export function TitleScreen({ onNewGame, onContinue, gameCleared }: TitleScreenProps) {
     const [hasSave, setHasSave] = useState(false);
     const [checking, setChecking] = useState(true);
 
@@ -25,14 +27,20 @@ export function TitleScreen({ onNewGame, onContinue }: TitleScreenProps) {
     if (checking) return null;
 
     return (
-        <div className="title-screen">
+        <div className={`title-screen ${gameCleared ? 'title-cleared' : ''}`}>
             <div className="title-content">
                 {/* Glitch Logo */}
                 <div className="title-logo" data-text="CHIMERA GEAR">
                     CHIMERA GEAR
                 </div>
-                <div className="title-subtitle">— Text Edition —</div>
-                <div className="title-tagline">遺伝子を鍛え、最強のキメラ兵器を生み出せ。</div>
+                <div className="title-subtitle">
+                    {gameCleared ? '— 偽りの記憶と鋼の意志 —' : '— Text Edition —'}
+                </div>
+                <div className="title-tagline">
+                    {gameCleared
+                        ? '最良の遺伝子は統合された。この記憶だけが永遠にループする。'
+                        : '遺伝子を鍛え、最強のキメラ兵器を生み出せ。'}
+                </div>
 
                 {/* Buttons */}
                 <div className="title-buttons">
@@ -42,11 +50,13 @@ export function TitleScreen({ onNewGame, onContinue }: TitleScreenProps) {
                         </button>
                     )}
                     <button className="title-btn title-btn-new" onClick={onNewGame}>
-                        ✦ NEW GAME
+                        {gameCleared ? '✦ NEW CYCLE' : '✦ NEW GAME'}
                     </button>
                 </div>
 
-                <div className="title-version">v1.0 — Genetic Arms Race</div>
+                <div className="title-version">
+                    {gameCleared ? 'ALL DATA INTEGRATED' : 'v1.0 — Genetic Arms Race'}
+                </div>
             </div>
 
             {/* Background particles */}

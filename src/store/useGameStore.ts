@@ -76,6 +76,10 @@ export interface GameStoreState {
     // Materials (elemental shards)
     materials: Record<MaterialType, number>;
 
+    // Story: unlocked archive logs + game clear state
+    unlockedArchives: Record<number, string>;
+    gameCleared: boolean;
+
     // Actions
     startBattle: () => void;
     addBattleLog: (log: BattleLogEntry) => void;
@@ -119,6 +123,10 @@ export interface GameStoreState {
     // Save / Load
     saveGame: () => Promise<void>;
     loadGame: () => Promise<boolean>;
+
+    // Story archive
+    unlockArchive: (stage: number, text: string) => void;
+    setGameCleared: (cleared: boolean) => void;
 }
 
 export const useGameStore = create<GameStoreState>((set, get) => ({
@@ -131,6 +139,10 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     wave: 1,
     maxWaves: 3,
     maxClearedStage: 0,
+
+    // Story archive
+    unlockedArchives: {} as Record<number, string>,
+    gameCleared: false,
 
     // Battle
     isBattling: false,
@@ -197,7 +209,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
         const equippedId = state.equippedWeapon?.id;
         const safeIds = ids.filter(id => id !== equippedId);
         const toRemove = state.inventory.filter(i => safeIds.includes(i.id));
-        const energyGain = toRemove.length * 10;
+        const energyGain = toRemove.length * 15; // ×1.5 育成緩和
 
         // Archive items for pedigree before deletion
         const newArchives: ArchivedAncestor[] = toRemove.map(item => ({
@@ -420,11 +432,23 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
             dpsHistory: data.dpsHistory,
             peakDps: data.peakDps,
             maxClearedStage: data.maxClearedStage ?? (data.stage > 1 ? data.stage - 1 : 0),
+            unlockedArchives: data.unlockedArchives ?? {},
+            gameCleared: data.gameCleared ?? false,
             isBreedingPhase: false,
             isBattling: false,
             battleLogs: [],
             currentResult: null,
         });
         return true;
+    },
+
+    // ==================== STORY ARCHIVE ====================
+    unlockArchive: (stage: number, text: string) => {
+        set((state) => ({
+            unlockedArchives: { ...state.unlockedArchives, [stage]: text },
+        }));
+    },
+    setGameCleared: (cleared: boolean) => {
+        set({ gameCleared: cleared });
     },
 }));

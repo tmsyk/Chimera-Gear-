@@ -134,18 +134,22 @@ export function isMasteryMax(mastery: number): boolean {
 
 /**
  * Create a genome with quality scaled to stage level.
- * Low stages produce weak genomes, high stages produce strong ones.
+ * Uses logarithmic growth to align with player breeding pace (Gen count).
  *
- * Stage 1-5:  avg ~0.15-0.30 (D rank center)
- * Stage 10:   avg ~0.35-0.45 (C-B rank)
- * Stage 25:   avg ~0.50-0.65 (B-A rank)
- * Stage 50:   avg ~0.70-0.90 (S rank center)
+ * Stage 1-5:   avg ~0.15-0.30 (D rank center)
+ * Stage 10:    avg ~0.30-0.40 (C rank)
+ * Stage 25:    avg ~0.40-0.55 (B rank)
+ * Stage 50:    avg ~0.55-0.70 (A rank)
+ * Stage 75:    avg ~0.65-0.80 (S rank)
+ * Stage 100:   avg ~0.75-0.88 (SS rank ceiling)
  *
- * Formula: value = random * (0.3 + stage/100) + (stage/200), clamped [0.01, 0.99]
+ * Formula: logarithmic curve with diminishing returns at high stages
  */
 export function createStageGenome(stage: number, geneCount: number = 10): number[] {
-    const range = Math.min(0.3 + stage / 100, 0.95);
-    const floor = Math.min(stage / 200, 0.50);
+    // Logarithmic progression: fast early, slow late
+    const progress = Math.log(1 + stage) / Math.log(1 + 100); // 0..1 over stages 1..100
+    const range = Math.min(0.25 + progress * 0.65, 0.90);
+    const floor = Math.min(progress * 0.45, 0.45);
     return Array.from({ length: geneCount }, () => {
         const raw = Math.random() * range + floor;
         return Math.max(0.01, Math.min(0.99, raw));

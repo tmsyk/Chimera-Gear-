@@ -31,6 +31,17 @@ export function BattleLogPanel() {
 
     const getLogClass = (log: typeof battleLogs[0]) => {
         const classes = ['log-entry'];
+
+        // Story log era styling takes priority
+        if (log.storyEra === 'hope') {
+            classes.push('story-hope');
+            return classes.join(' ');
+        }
+        if (log.storyEra === 'awakening') {
+            classes.push('story-awakening');
+            return classes.join(' ');
+        }
+
         if (log.isMutation) classes.push('mutation');
         else if (log.actor === 'weapon') classes.push('weapon');
         else if (log.actor === 'enemy') classes.push('enemy');
@@ -84,7 +95,11 @@ export function BattleLogPanel() {
                             </div>
                         )}
                         {visibleLogs.map((log, i) => (
-                            <div key={offset + i} className={getLogClass(log)}>
+                            <div
+                                key={offset + i}
+                                className={getLogClass(log)}
+                                style={log.storyEra ? { whiteSpace: 'pre-wrap', lineHeight: 1.6 } : undefined}
+                            >
                                 {log.message}
                             </div>
                         ))}

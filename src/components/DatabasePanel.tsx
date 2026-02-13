@@ -46,7 +46,7 @@ function AncestorNode({ item, label, archivedStatus, finalMastery, highestStage 
 type SortKey = 'fitness' | 'generation' | 'rating' | 'dps' | 'element' | 'mastery';
 
 export function DatabasePanel() {
-    const { inventory, geneEnergy, decompose, equipWeapon, equippedWeapon, showToast, crystallizedItems, toggleItemLock, ancestors } = useGameStore();
+    const { inventory, geneEnergy, decompose, equipWeapon, equippedWeapon, showToast, crystallizedItems, toggleItemLock, ancestors, unlockedArchives } = useGameStore();
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [sortBy, setSortBy] = useState<SortKey>('fitness');
     const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -126,15 +126,15 @@ export function DatabasePanel() {
     const selectCOnly = () => selectByFilter(i => ItemDecoder.getRating(i) === 'C');
     const selectExpired = () => selectByFilter(i => (i.breedCount ?? 0) >= MAX_BREED_COUNT);
 
-    // Compute EP yield for selected items
-    const selectedEP = selectedIds.size * 10;
+    // Compute EP yield for selected items (×1.5 育成緩和)
+    const selectedEP = selectedIds.size * 15;
 
     const handleDecompose = () => {
         if (selectedIds.size === 0) return;
         const count = selectedIds.size;
         decompose(Array.from(selectedIds));
         setSelectedIds(new Set());
-        showToast(`🔥 ${count}体を解体 → ⚡${count * 10} EP獲得`);
+        showToast(`🔥 ${count}体を解体 → ⚡${count * 15} EP獲得`);
     };
 
     return (
@@ -460,6 +460,49 @@ export function DatabasePanel() {
                                     </div>
                                 </div>
                                 <span className={`db-item-rating ${cRating}`} style={{ fontSize: 14 }}>{cRating}</span>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+
+            {/* ── ミッション記録 — Story Archive ── */}
+            {Object.keys(unlockedArchives).length > 0 && (
+                <div style={{
+                    marginTop: 24,
+                    padding: 16,
+                    background: 'linear-gradient(135deg, rgba(0, 229, 255, 0.03), rgba(255, 152, 0, 0.03))',
+                    border: '1px solid rgba(0, 229, 255, 0.15)',
+                    borderRadius: 'var(--radius)',
+                }}>
+                    <div style={{ fontSize: 11, color: '#00e5ff', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 12 }}>
+                        📋 ミッション記録 — Mission Archive ({Object.keys(unlockedArchives).length}/10)
+                    </div>
+                    {[10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map(stage => {
+                        const log = unlockedArchives[stage];
+                        if (!log) return (
+                            <div key={stage} style={{
+                                padding: '6px 10px', marginBottom: 4,
+                                fontSize: 11, color: 'var(--text-dim)', opacity: 0.4,
+                                borderLeft: '2px solid var(--text-dim)',
+                            }}>
+                                Stage {stage}: [未発見]
+                            </div>
+                        );
+                        const isAwakening = stage >= 80;
+                        return (
+                            <div key={stage} style={{
+                                padding: '8px 10px', marginBottom: 6,
+                                fontSize: 11, whiteSpace: 'pre-wrap', lineHeight: 1.6,
+                                borderLeft: `2px solid ${isAwakening ? '#00e5ff' : '#ff9800'}`,
+                                color: isAwakening ? '#00e5ff' : '#ffd180',
+                                background: isAwakening
+                                    ? 'linear-gradient(90deg, rgba(0,229,255,0.04) 0%, transparent 100%)'
+                                    : 'linear-gradient(90deg, rgba(255,152,0,0.04) 0%, transparent 100%)',
+                                fontStyle: isAwakening ? 'normal' : 'italic',
+                                textShadow: isAwakening ? '0 0 3px rgba(0,229,255,0.3)' : 'none',
+                            }}>
+                                {log}
                             </div>
                         );
                     })}

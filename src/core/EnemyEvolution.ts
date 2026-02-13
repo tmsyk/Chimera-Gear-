@@ -101,9 +101,26 @@ export class EnemyEvolution {
         return { genome: baseGenome, generation: gen, species };
     }
 
+    /** Named boss data per stage tier */
+    private static readonly BOSS_DATA: Record<number, { name: string; title: string }> = {
+        10: { name: '番犬型試作体ケルベロス', title: '目覚め' },
+        20: { name: '深海型適応体リヴァイアサン', title: '休息' },
+        30: { name: '暴食型突然変異体フェンリル', title: '熱' },
+        40: { name: '空戦型制圧体バハムート', title: 'ソルジャー' },
+        50: { name: '循環型巨大体ヨルムンガンド', title: 'チーム' },
+        60: { name: '焦土型殲滅体スルト', title: '静寂' },
+        70: { name: '原初型支配体ティアマト', title: 'ノイズ' },
+        80: { name: '裁定型禁忌体アヌビス', title: '怪物' },
+        90: { name: '超越型観測体メタトロン', title: 'キメラ' },
+        100: { name: '開発責任者 ミナト', title: '最終戦' },
+    };
+
     /** Spawn a boss enemy — appears every 10 stages.
-     *  TWO-TIER: Stage-scaled base + extreme counter-resistance. */
-    spawnBoss(stageLevel: number): { genome: Genome; generation: number; species: EnemySpecies } {
+     *  Named boss with 2.5× all stats (3× for Stage 100) + extreme counter-resistance. */
+    spawnBoss(stageLevel: number): {
+        genome: Genome; generation: number; species: EnemySpecies;
+        bossName?: string; bossTitle?: string;
+    } {
         let baseGenome: Genome;
         let gen = 1;
 
@@ -123,10 +140,14 @@ export class EnemyEvolution {
             baseGenome = createStageGenome(stageLevel);
         }
 
-        // Boss stats: HP ×2.5, ATK ×1.5, high defense
-        baseGenome[4] = clampGene(baseGenome[4] * 2.5);
-        baseGenome[0] = clampGene(baseGenome[0] * 1.5);
-        baseGenome[6] = clampGene(baseGenome[6] + 0.3);
+        // Stage 100 (final boss): 3× multiplier; others: 2.5×
+        const mult = stageLevel >= 100 ? 3.0 : 2.5;
+        baseGenome[0] = clampGene(baseGenome[0] * mult);  // ATK
+        baseGenome[1] = clampGene(Math.min(baseGenome[1] + 0.15, 0.99)); // Slightly faster
+        baseGenome[4] = clampGene(baseGenome[4] * mult);  // HP
+        baseGenome[6] = clampGene(baseGenome[6] + 0.4);   // DEF weight
+        baseGenome[8] = clampGene(baseGenome[8] + 0.15);  // Fire resist
+        baseGenome[9] = clampGene(baseGenome[9] + 0.15);  // Ice resist
 
         // Tier 2: Extreme resistance against player's dominant element (+0.4)
         const dominant = this.getDominantPlayerElement();
@@ -134,11 +155,16 @@ export class EnemyEvolution {
             baseGenome = boostResistance(baseGenome, dominant as 'Fire' | 'Ice' | 'Lightning', 0.4);
         }
 
-        // Additional stage scaling
-        const stageBoost = Math.min(0.3, stageLevel * 0.01);
-        baseGenome[4] = clampGene(baseGenome[4] + stageBoost);
+        // Named boss lookup
+        const bossInfo = EnemyEvolution.BOSS_DATA[stageLevel];
 
-        return { genome: baseGenome, generation: gen, species: 'boss' };
+        return {
+            genome: baseGenome,
+            generation: gen,
+            species: 'boss',
+            bossName: bossInfo?.name,
+            bossTitle: bossInfo?.title,
+        };
     }
 
     /** Apply resistance boost against player's dominant element */

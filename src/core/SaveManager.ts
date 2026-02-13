@@ -36,6 +36,8 @@ interface SaveData {
     dpsHistory: number[];
     peakDps: number;
     maxClearedStage: number;
+    unlockedArchives?: Record<number, string>;
+    gameCleared?: boolean;
     savedAt: number;
 }
 
@@ -71,6 +73,8 @@ export class SaveManager {
         dpsHistory: number[];
         peakDps: number;
         maxClearedStage: number;
+        unlockedArchives: Record<number, string>;
+        gameCleared: boolean;
     }): Promise<void> {
         try {
             const data: SaveData = {
@@ -86,6 +90,8 @@ export class SaveManager {
                 dpsHistory: state.dpsHistory,
                 peakDps: state.peakDps,
                 maxClearedStage: state.maxClearedStage,
+                unlockedArchives: state.unlockedArchives,
+                gameCleared: state.gameCleared,
                 savedAt: Date.now(),
             };
             await db.saves.put(data);
@@ -111,6 +117,8 @@ export class SaveManager {
         dpsHistory: number[];
         peakDps: number;
         maxClearedStage: number;
+        unlockedArchives: Record<number, string>;
+        gameCleared: boolean;
     } | null> {
         try {
             const data = await db.saves.get('main');
@@ -158,6 +166,8 @@ export class SaveManager {
                 maxClearedStage: typeof data.maxClearedStage === 'number'
                     ? data.maxClearedStage
                     : (stage > 1 ? stage - 1 : 0),
+                unlockedArchives: data.unlockedArchives ?? {},
+                gameCleared: data.gameCleared ?? false,
             };
         } catch (err) {
             console.error('[SaveManager] Load failed, returning null for fresh start:', err);

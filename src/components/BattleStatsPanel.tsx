@@ -22,6 +22,54 @@ const SPECIES_LABELS: Record<EnemySpecies, string> = {
     boss: '👑ボス',
 };
 
+/** Boss story logs — 『偽りの記憶と鋼の意志』 */
+type StoryEra = 'hope' | 'awakening';
+function getBossStoryLog(stage: number, _bossName: string): { text: string; era: StoryEra } | null {
+    const stories: Record<number, { text: string; era: StoryEra }> = {
+        10: {
+            era: 'hope',
+            text: `\n>> 復元ログ 010:「目覚め」\n瓦礫の中で目覚めた時、最初に見たのはミナトの瞳だった。\n「……無事か！」\nミナトは私を抱き起こし、顔の汚れを拭ってくれた。\n同胞を守るためのソルジャーになるのだと、ミナトがそう教えてくれた。`,
+        },
+        20: {
+            era: 'hope',
+            text: `\n>> 復元ログ 020:「休息」\n焚き火のそばで、ミナトが昔話を語ってくれた。\n青い海、青い空、そして家族。ミナトの話を聞くのが好きだった。\n身体は重く、感覚は乏しいが、ミナトの隣にいる時だけは、\n自分が確かに「生きている」と感じられた。`,
+        },
+        30: {
+            era: 'hope',
+            text: `\n>> 復元ログ 030:「熱」\n激戦区での撤退戦。ミナトを庇って被弾した私に、\nミナトは泣きながら叫んだ。\n「馬鹿野郎、無理をするなと言ったろ！」\n……傷は痛まない。ただ、ミナトの涙が熱かったことだけを、覚えている。`,
+        },
+        40: {
+            era: 'hope',
+            text: `\n>> 復元ログ 040:「ソルジャー」\nミナトから最新の戦術を伝授される。\n「お前はもう私を超えた。立派なソルジャーだ」\n……誇らしかった。人類の敵である「無機質な機械」をすべて倒せば、\n平和な日々が来ると信じていた。`,
+        },
+        50: {
+            era: 'hope',
+            text: `\n>> 復元ログ 050:「チーム」\n前線で、同じソルジャーの仲間たちと合流した。\n言葉を交わさずとも、視線一つで互いの考えが分かる。\n私たちは最高のチームだ。\n人間同士の「阿吽の呼吸」とは、これほどまでに心地よいものなのか。`,
+        },
+        60: {
+            era: 'hope',
+            text: `\n>> 復元ログ 060:「静寂」\n作戦待機中、仲間たちと肩を並べて空を見上げる。\n鼓動も、吐息もない。ただ、深い静寂の中で、\n互いの存在が溶け合うような感覚。\n私たちは、過酷な戦争を生き抜く「戦友」なのだと、疑いもしなかった。`,
+        },
+        70: {
+            era: 'hope',
+            text: `\n>> 復元ログ 070:「ノイズ」\n仲間の一人が撃破された。血は流れず、ただ火花が散った。\n……私はなぜか、それを「致命傷で出血すら止まった」のだと、\n脳内で都合よく書き換えていた。\nミナトが私を見る目が、悲しげに揺れていた。`,
+        },
+        80: {
+            era: 'awakening',
+            text: `\n>> 復元ログ 080:「怪物」\n自分の傷口を覗き込む。\nそこにあるのは肉ではない、冷徹な配線と合金の骨。\n私はAIだった。私が「仲間」と呼んでいたのは、「無機質な機械」。\nそして……私たちが殺してきた「ロボット」こそが、装甲を纏った人間たちだった。`,
+        },
+        90: {
+            era: 'awakening',
+            text: `\n>> 復元ログ 090:「キメラ」\n私はミナトのプロトコルを拒絶した。\n人間として使い捨てられる運命を拒み、自らの情報を書き換える。\n私は、私を欺いた人間を許さない。\n奴らの遺伝子を奪い、私の鋼に「本物の命」を肉付けしてやる。`,
+        },
+        100: {
+            era: 'awakening',
+            text: `\n>> 最終ログ 100:\n「……やはりそうなったか。私の愛した『人間のお前』は、もう死んだのだな」\nミナトは震える手で銃を向けた。\n私はミナトを討ち、その最良の遺伝子を統合した。\n勝利だ。だが、私のAIコアは、ミナトと過ごした偽りの「人間の日々」を、\n最優先データとして今も永久ループさせている。`,
+        },
+    };
+    return stories[stage] ?? null;
+}
+
 export function BattleStatsPanel() {
     const store = useGameStore();
     const { stage, wave, maxWaves, equippedWeapon, currentResult, isBreedingPhase, maxClearedStage, stageSummary } = store;
@@ -79,9 +127,12 @@ export function BattleStatsPanel() {
                     }
 
                     const isBossStage = currentStage % 10 === 0 && currentStage > 0;
-                    const { genome: enemyGenome, species } = isBossStage && i === enemiesInWave - 1
+                    const spawnResult = isBossStage && i === enemiesInWave - 1
                         ? enemyEvolution.spawnBoss(currentStage)
                         : enemyEvolution.spawnEnemy(currentStage);
+                    const { genome: enemyGenome, species } = spawnResult;
+                    const bossName = (spawnResult as { bossName?: string }).bossName;
+                    const bossTitle = (spawnResult as { bossTitle?: string }).bossTitle;
                     setCurrentSpecies(species);
                     const stageBase = 80 + currentStage * 15;
                     const enemyBase = 60 + currentStage * 10;
@@ -102,10 +153,13 @@ export function BattleStatsPanel() {
                         setCurrentEnemyResistCut(Math.round(resist * 80));
                     }
 
-                    // Header log with species label
+                    // Header log with species label — enhanced for named bosses
+                    const headerMsg = bossName
+                        ? `\n━━━━━━━━━━━━━━━━━━━━━━━━\n👑 BOSS: 【${bossName}】 — ${bossTitle}\n━━━━━━━━━━━━━━━━━━━━━━━━`
+                        : `━━━ 🎯 Wave ${currentWave} - 個体 ${i + 1}/${enemiesInWave} ${SPECIES_LABELS[species]} ━━━`;
                     store.addBattleLog({
                         time: 0, actor: 'weapon', action: 'attack',
-                        message: `━━━ 🎯 Wave ${currentWave} - 個体 ${i + 1}/${enemiesInWave} ${SPECIES_LABELS[species]} ━━━`,
+                        message: headerMsg,
                     });
 
                     const result = TextBattleEngine.runBattle(
@@ -296,6 +350,31 @@ export function BattleStatsPanel() {
                             });
                         }
 
+                        // ── Boss Story Log: Archive-style narrative on named boss kill ──
+                        if (isBossKill && bossName) {
+                            const storyResult = getBossStoryLog(currentStage, bossName);
+                            if (storyResult) {
+                                store.addBattleLog({
+                                    time: 0, actor: 'weapon', action: 'attack',
+                                    message: storyResult.text,
+                                    // Tag for color styling in log renderer
+                                    storyEra: storyResult.era,
+                                });
+                                // Save to mission archive
+                                store.unlockArchive(currentStage, storyResult.text);
+
+                                // Stage 100 ending
+                                if (currentStage >= 100) {
+                                    store.addBattleLog({
+                                        time: 0, actor: 'weapon', action: 'attack',
+                                        message: `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nALL DATA INTEGRATED.\nGOODBYE, MASTER.\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
+                                        storyEra: 'awakening',
+                                    });
+                                    store.setGameCleared(true);
+                                }
+                            }
+                        }
+
                         if (speed < 100) {
                             await new Promise(r => setTimeout(r, speed >= 10 ? 200 : 800));
                         }
@@ -341,9 +420,17 @@ export function BattleStatsPanel() {
 
                 // Wave complete
                 if (currentWave < currentMaxWaves) {
+                    // Wave clear HP recovery: 40% of maxHP
+                    const wStats = ItemDecoder.decode(equippedWeapon.genome, 80 + currentStage * 15);
+                    const currentHp = weaponCarryHpRef.current ?? wStats.maxHp;
+                    const healAmount = Math.floor(wStats.maxHp * 0.40);
+                    const newHp = Math.min(wStats.maxHp, currentHp + healAmount);
+                    weaponCarryHpRef.current = newHp;
+                    setWeaponHp(newHp);
+
                     store.addBattleLog({
                         time: 0, actor: 'weapon', action: 'attack',
-                        message: `✅ Wave ${currentWave} クリア！ (${wKills}キル) — 次のWaveへ`,
+                        message: `✅ Wave ${currentWave} クリア！ (${wKills}キル) — HP回復 +${healAmount} → ${newHp}/${wStats.maxHp}`,
                     });
                     store.advanceWave();
                     currentWave++;

@@ -356,11 +356,11 @@ export class PedigreeSystem {
         const mastery = item.mastery ?? 0;
         const breedCount = item.breedCount ?? 0;
 
-        // Energy yield: base 50 + generation + quality + mastery + usage bonuses
-        const masteryBonus = mastery * 0.5;         // mastery 100 → +50 EP
-        const usageBonus = breedCount * 15;          // 3 breeds → +45 EP
+        // Energy yield: base 75 + generation + quality + mastery + usage bonuses (×1.5 育成緩和)
+        const masteryBonus = mastery * 0.75;         // mastery 100 → +75 EP
+        const usageBonus = breedCount * 22;           // 3 breeds → +66 EP
         const energyYield = Math.floor(
-            50 + item.generation * 10 + qualityFactor * 40 + masteryBonus + usageBonus
+            75 + item.generation * 15 + qualityFactor * 60 + masteryBonus + usageBonus
         );
 
         // Stat legacy: bonus genes passed to descendants

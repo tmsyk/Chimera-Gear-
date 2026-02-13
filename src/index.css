@@ -313,6 +313,49 @@ body {
   font-weight: 500;
 }
 
+/* Story logs: hope era (Stage 10-70) — warm amber/orange */
+.log-entry.story-hope {
+  border-left-color: #ff9800;
+  color: #ffd180;
+  background: linear-gradient(90deg, rgba(255, 152, 0, 0.08) 0%, transparent 100%);
+  font-style: italic;
+  font-size: 12px;
+  padding: 6px 8px;
+  margin: 4px 0;
+}
+
+/* Story logs: awakening era (Stage 80+) — cold cyan + glitch noise */
+.log-entry.story-awakening {
+  border-left-color: #00e5ff;
+  color: #00e5ff;
+  background: linear-gradient(90deg, rgba(0, 229, 255, 0.06) 0%, rgba(255, 0, 60, 0.04) 100%);
+  font-size: 12px;
+  padding: 6px 8px;
+  margin: 4px 0;
+  text-shadow: 0 0 4px rgba(0, 229, 255, 0.4);
+  animation: storyGlitch 4s ease infinite;
+}
+
+@keyframes storyGlitch {
+
+  0%,
+  95%,
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+
+  96% {
+    opacity: 0.8;
+    transform: translateX(2px) skewX(0.5deg);
+  }
+
+  97% {
+    opacity: 1;
+    transform: translateX(-1px);
+  }
+}
+
 .log-entry.crit {
   font-weight: 700;
 }
@@ -330,6 +373,29 @@ body {
 
   100% {
     background: transparent;
+  }
+}
+
+/* Ending overlay animations */
+@keyframes endingFadeIn {
+  0% {
+    opacity: 0;
+  }
+
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes endingTextIn {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: none;
   }
 }
 
@@ -1363,6 +1429,80 @@ body {
   justify-content: center;
   background: var(--bg-primary);
   overflow: hidden;
+}
+
+/* ═══ Blood-stained variant after game clear ═══ */
+.title-screen.title-cleared {
+  background: #0a0000;
+}
+
+.title-screen.title-cleared::before {
+  background:
+    radial-gradient(ellipse at 30% 20%, rgba(180, 0, 0, 0.12) 0%, transparent 60%),
+    radial-gradient(ellipse at 70% 80%, rgba(100, 0, 0, 0.08) 0%, transparent 60%),
+    radial-gradient(ellipse at 50% 50%, rgba(60, 0, 0, 0.06) 0%, transparent 80%) !important;
+}
+
+.title-screen.title-cleared .title-logo {
+  background: linear-gradient(135deg, #ff1a1a, #8b0000, #ff4444) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  filter: drop-shadow(0 0 12px rgba(200, 0, 0, 0.5));
+  animation: titlePulseBlood 3s ease-in-out infinite !important;
+}
+
+.title-screen.title-cleared .title-logo::before {
+  background: linear-gradient(135deg, #cc0000, transparent) !important;
+}
+
+.title-screen.title-cleared .title-logo::after {
+  background: linear-gradient(135deg, transparent, #660000) !important;
+}
+
+.title-screen.title-cleared .title-subtitle {
+  color: #ff3333 !important;
+  text-shadow: 0 0 6px rgba(200, 0, 0, 0.4);
+}
+
+.title-screen.title-cleared .title-tagline {
+  color: rgba(200, 60, 60, 0.6) !important;
+}
+
+.title-screen.title-cleared .title-version {
+  color: #660000 !important;
+  letter-spacing: 4px;
+}
+
+.title-screen.title-cleared .title-particle {
+  background: rgba(200, 0, 0, 0.6) !important;
+  box-shadow: 0 0 6px rgba(200, 0, 0, 0.4) !important;
+}
+
+.title-screen.title-cleared .title-btn-new {
+  border-color: rgba(200, 0, 0, 0.3) !important;
+  color: #ff3333 !important;
+}
+
+.title-screen.title-cleared .title-btn-new:hover {
+  background: rgba(200, 0, 0, 0.1) !important;
+  border-color: #ff3333 !important;
+}
+
+.title-screen.title-cleared .title-btn-continue {
+  border-color: rgba(200, 0, 0, 0.3) !important;
+  color: #cc6666 !important;
+}
+
+@keyframes titlePulseBlood {
+
+  0%,
+  100% {
+    filter: drop-shadow(0 0 8px rgba(200, 0, 0, 0.3));
+  }
+
+  50% {
+    filter: drop-shadow(0 0 24px rgba(200, 0, 0, 0.6));
+  }
 }
 
 .title-screen::before {

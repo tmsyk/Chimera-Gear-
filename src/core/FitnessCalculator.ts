@@ -69,10 +69,10 @@ export class FitnessCalculator {
         };
     }
 
-    /** Add mastery points to a weapon based on battle performance */
+    /** Add mastery points to a weapon based on battle performance (×1.5 育成緩和) */
     static addMastery(currentMastery: number, fitness: number): number {
-        if (fitness >= 80) return Math.min(100, currentMastery + 2);
-        if (fitness >= 50) return Math.min(100, currentMastery + 1);
+        if (fitness >= 80) return Math.min(100, currentMastery + 3);
+        if (fitness >= 50) return Math.min(100, currentMastery + 2);
         return currentMastery;
     }
 }
