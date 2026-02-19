@@ -54,8 +54,9 @@ export class EnemyEvolution {
         let baseGenome: Genome;
         let gen = 1;
 
-        if (this.bestAncestors.length >= 2) {
+        if (this.bestAncestors.length >= 4) {
             // Tier 1: Evolved from best ancestors + stage quality floor
+            // Requires 4 kills before evolution starts (prevents rapid early-game power spike)
             this.generationCount = Math.max(...this.bestAncestors.map(p => p.generation)) + 1;
             gen = this.generationCount;
 
@@ -63,7 +64,9 @@ export class EnemyEvolution {
             const p2 = GeneticEngine.selectParent(this.bestAncestors);
 
             let child = GeneticEngine.crossover(p1.genome, p2.genome);
-            child = GeneticEngine.mutate(child, 0.12 + stageLevel * 0.01);
+            // Mutation rate scales with stage: Stage 1 = 0.058, Stage 19+ = 0.20
+            const mutRate = Math.min(0.05 + stageLevel * 0.008, 0.20);
+            child = GeneticEngine.mutate(child, mutRate);
 
             // Apply stage floor: pull weak genes up to stage minimum
             const stageFloor = createStageGenome(stageLevel);
@@ -91,9 +94,11 @@ export class EnemyEvolution {
             baseGenome[9] = clampGene(baseGenome[9] + 0.1);
         } else if (roll < 0.5) {
             // ATTACKER: low HP, high attack, fast
+            // Attack multiplier scales with stage: Stage 1 = 1.05x, Stage 19+ = 2.0x
             species = 'attacker';
+            const atkMult = Math.min(1.0 + stageLevel * 0.055, 2.0);
             baseGenome[4] = baseGenome[4] * 0.5;
-            baseGenome[0] = clampGene(baseGenome[0] * 2.0);
+            baseGenome[0] = clampGene(baseGenome[0] * atkMult);
             baseGenome[1] = clampGene(baseGenome[1] + 0.2);
             baseGenome[5] = clampGene(baseGenome[5] + 0.3);
         }
@@ -219,8 +224,15 @@ export class EnemyEvolution {
         };
     }
 
-    /** Reset element tracking for new stage */
+    /** Reset element tracking for new stage.
+     *  Also trims bestAncestors to top 5, so each stage starts with limited evolution history.
+     *  This prevents accumulated knowledge from making early-stage enemies immediately OP.
+     */
     resetStageTracking() {
         this.playerElementDamage.clear();
+        // Keep only the top 5 ancestors across stage transitions (prevents runaway evolution)
+        if (this.bestAncestors.length > 5) {
+            this.bestAncestors = this.bestAncestors.slice(0, 5);
+        }
     }
 }
