@@ -322,9 +322,13 @@ export function BattleStatsPanel() {
                         // ── Loot drop with rank-based visual logs ──
                         const lootChance = species === 'boss' ? 0.80 : 0.40;
                         if (Math.random() < lootChance) {
+                            // Stage-based gene cap: prevents B+ rank from appearing too early.
+                            // Stage 1-9 → max C rank, Stage 10 → B rank unlocks, Stage 17+ → A/S uncapped.
+                            const geneCap = Math.min(0.50 + (currentStage - 1) * 0.03, 0.99);
+                            const lootGenome = enemyGenome.map(g => Math.min(g, geneCap));
                             const lootItem = {
                                 id: `loot_${Date.now()}_${Math.random().toString(36).slice(2, 5)}_${i}`,
-                                genome: enemyGenome,
+                                genome: lootGenome,
                                 fitness: fit,
                                 generation: 1,
                             };
